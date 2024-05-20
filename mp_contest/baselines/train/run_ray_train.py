@@ -121,7 +121,7 @@ if __name__ == "__main__":
            policy configurations with non-tested algorithms')
 
   # Fetch experiment configurations
-  configs, exp_config, tune_config = get_experiment_config(args, default_config)
+  configs, exp_config, _ = get_experiment_config(args, default_config)
   
   # Ensure GPU is available if set to True
   if configs.num_gpus > 0:
@@ -153,11 +153,11 @@ if __name__ == "__main__":
 
 
   # Setup hyper-parameter optimization configs here
-  if not args.no_tune:
-    # NotImplementedError
-    tune_config = None
-  else:
-    tune_config = tune.TuneConfig(reuse_actors=False)
+  # if not args.no_tune:
+  #   # NotImplementedError
+  #   tune_config = None
+  # else:
+  #   tune_config = tune.TuneConfig(reuse_actors=False)
 
 
   # Setup checkpointing configurations

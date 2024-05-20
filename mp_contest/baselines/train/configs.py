@@ -1,6 +1,7 @@
 from meltingpot import substrate
 from ray.rllib.policy import policy
 from baselines.train import make_envs
+from ray.rllib.algorithms import ppo
 
 SUPPORTED_SCENARIOS = [
     'clean_up_7',
@@ -67,8 +68,8 @@ def get_experiment_config(args, default_config):
         # experiment trials
         "exp_name": args.exp,
         "stopping": {
-                    #"timesteps_total": 1000000,
-                    "training_iteration": 1,
+                    "timesteps_total": 1000000,
+                    # "training_iteration": 1,
                     #"episode_reward_mean": 100,
         },
         "num_checkpoints": 5,
@@ -82,7 +83,7 @@ def get_experiment_config(args, default_config):
     
     # Preferrable to update the parameters in above dict before changing anything below
     
-    run_configs = default_config
+    run_configs: ppo.PPOConfig = default_config
     experiment_configs = {}
     tune_configs = None
 
