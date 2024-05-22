@@ -96,6 +96,13 @@ def get_cli_args():
         help="Whether this script should be run as a test.",
   )
 
+  parser.add_argument(
+      "--continue_training",
+        type=str,
+        default=None,
+        help="Path to the checkpoint to continue training from.",
+  )
+
   args = parser.parse_args()
   print("Running trails with the following arguments: ", args)
   return args
@@ -119,6 +126,7 @@ if __name__ == "__main__":
   else:
      print('The selected option is not tested. You may encounter issues if you use the baseline \
            policy configurations with non-tested algorithms')
+     raise NotImplementedError
 
   # Fetch experiment configurations
   configs, exp_config, _ = get_experiment_config(args, default_config)
@@ -160,6 +168,12 @@ if __name__ == "__main__":
   # else:
   #   tune_config = tune.TuneConfig(reuse_actors=False)
 
+    if args.contiue_training is not None:
+        # Load from checkpoint
+        assert trainer== "PPO", "Only PPO is supported for now."
+        # trainer = trainer.load(args.contiue_training)
+        trainer = ppo.PPO.from_checkpoint(args.contiue_training)
+        print(f"Continuing training from {args.contiue_training}")
 
   # Setup checkpointing configurations
   ckpt_config = air.CheckpointConfig(num_to_keep=exp_config['keep'], checkpoint_frequency=exp_config['freq'], 

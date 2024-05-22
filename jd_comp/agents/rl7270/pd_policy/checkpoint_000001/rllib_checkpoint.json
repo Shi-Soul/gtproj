@@ -1,0 +1,1 @@
+{"type": "Algorithm", "checkpoint_version": "1.1", "format": "cloudpickle", "state_file": "/NAS2020/Workspaces/DRLGroup/wjxie/env/gtproj/mp_contest/results/torch/pd_matrix/PPO_meltingpot_397b4_00000_0_2024-05-21_13-58-39/checkpoint_007270/algorithm_state.pkl", "policy_ids": ["agent_1", "agent_0"], "ray_version": "2.6.1", "ray_commit": "d68bf04883af2e430fc3a50fd544bb7c84aff2e9"}

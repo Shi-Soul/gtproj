@@ -5,6 +5,8 @@ import json
 import numpy as np
 import argparse
 import sys
+from pprint import pprint
+from copy import deepcopy
 
 
 from env.chooseenv import make
@@ -141,7 +143,7 @@ def run_game(
     all_observes = g.all_observes
     while not g.is_terminal():
         step = "step%d" % g.step_cnt
-        if g.step_cnt % 10 == 0:
+        if g.step_cnt % 100 == 0:
             print(step)
 
         if render_mode and hasattr(g, "env_core"):
@@ -164,7 +166,7 @@ def run_game(
             info_dict["info_before"] = info_before
         info_dict["reward"] = reward
         if info_after:
-            info_dict["info_after"] = info_after
+            info_dict["info_after"] = deepcopy(info_after)
         steps.append(info_dict)
 
     game_info["steps"] = steps
@@ -173,6 +175,10 @@ def run_game(
     game_info["n_return"] = g.n_return
     ed = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
     game_info["end_time"] = ed
+    
+    print("Game Info")
+    # pprint(game_info)
+    print("n_return: ", g.n_return)
     logs = json.dumps(game_info, ensure_ascii=False, cls=NpEncoder)
     logger.info(logs)
 

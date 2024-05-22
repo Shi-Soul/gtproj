@@ -74,7 +74,7 @@ def run_evaluation(args):
         video_root=video_dir)  
   return results, scenario
 
-if __name__ == "__main__":
+def main():
 
   parser = argparse.ArgumentParser(description="Evaluation Script for Multi-Agent RL in Meltingpot")
   
@@ -139,3 +139,10 @@ if __name__ == "__main__":
   with pd.option_context('display.max_rows', None, 'display.max_columns', None):
       print(results)
 
+
+if __name__ == "__main__":
+  try:
+    main()
+  except Exception as e:
+    print('>>>>>>>>>BUG: ', e)
+    import pdb; pdb.post_mortem()
