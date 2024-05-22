@@ -68,9 +68,9 @@ def get_experiment_config(args, default_config):
         # experiment trials
         "exp_name": args.exp,
         "stopping": {
-                    "timesteps_total": 1000000,
-                    # "training_iteration": 1,
-                    #"episode_reward_mean": 100,
+                    # "timesteps_total": 1000000,
+                    # "training_iteration": 100,
+                    "episode_reward_mean": 100,
         },
         "num_checkpoints": 5,
         "checkpoint_interval": 10,

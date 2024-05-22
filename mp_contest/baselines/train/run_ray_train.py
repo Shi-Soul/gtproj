@@ -134,7 +134,8 @@ if __name__ == "__main__":
 
 
   # Setup WanDB 
-  if "WANDB_API_KEY" in os.environ and args.wandb:
+#   if "WANDB_API_KEY" in os.environ and args.wandb:
+  if args.wandb:
     wandb_project = f'{args.exp}_{args.framework}'
     wandb_group = "meltingpot"
 
@@ -143,7 +144,7 @@ if __name__ == "__main__":
         WandbLoggerCallback(
             project=wandb_project,
             group=wandb_group,
-            api_key=os.environ["WANDB_API_KEY"],
+            # api_key=os.environ["WANDB_API_KEY"],
             log_config=True,
         )
     ]
