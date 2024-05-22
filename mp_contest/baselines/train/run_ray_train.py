@@ -109,7 +109,7 @@ def get_cli_args():
 
 
 
-if __name__ == "__main__":
+def main():
 
   args = get_cli_args()
 
@@ -192,3 +192,10 @@ if __name__ == "__main__":
   
   ray.shutdown()
 
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        print(">>>BUG: ",e)
+        import pdb;pdb.post_mortem()

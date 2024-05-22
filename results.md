@@ -2,10 +2,10 @@
 
 ## PD
 
-self play:
+### self play:
 ![Alt text](pics/pd.png)
 
-test cases
+### test cases
 ![Alt text](pics/pd0.png)
 
 ![Alt text](pics/pd1.png)
@@ -15,7 +15,7 @@ test cases
 ![Alt text](pics/pd3.png)
 
 
-jidi scenarios:
+### jidi scenarios:
 
 rl2500:
 - n_return:  [4.841031746031746]
@@ -38,7 +38,7 @@ random:
 - "n_return": [18.624486855736855]
 - "n_return": [15.811031746031746]
 
-jidi competition:
+### jidi competition:
 - rl7270-rl7270: 
     - n_return:  [1.722222222222222, 2.9722222222222223]
     - n_return:  [0.0, 0.0]
@@ -48,11 +48,11 @@ jidi competition:
 
 ## Clean up
 
-self play:
+### self play:
 
 ![Alt text](pics/cu0.png)
 
-testcases
+### testcases
 
 RUN_DIR=results/torch/clean_up/PPO_meltingpot_5ecb9_00000_0_2024-05-21_14-28-20
 CKP_NAME=checkpoint_000100
