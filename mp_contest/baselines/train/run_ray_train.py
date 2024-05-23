@@ -172,8 +172,11 @@ def main():
         # Load from checkpoint
         assert trainer== "PPO", "Only PPO is supported for now."
         # trainer = trainer.load(args.contiue_training)
-        trainer:ppo.PPO = ppo.PPO.from_checkpoint(args.contiue_training).restore(args.contiue_training)
+        trainer:ppo.PPO = ppo.PPO.from_checkpoint(args.contiue_training)
+        trainer.restore(args.contiue_training)
         print(f"Continuing training from {args.contiue_training}")
+    else:
+        print(f"Training {trainer} from scratch")
 
   # Setup checkpointing configurations
   ckpt_config = air.CheckpointConfig(num_to_keep=exp_config['keep'], checkpoint_frequency=exp_config['freq'], 
