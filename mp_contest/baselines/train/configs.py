@@ -55,8 +55,8 @@ def get_experiment_config(args, default_config):
         "framework": args.framework,
         "exploration_config":{
             "type":"EpsilonGreedy",
-            "warmup_timesteps": 1000,
-            "epsilon_timesteps": 1e6,
+            "warmup_timesteps": 1e5,
+            "epsilon_timesteps": 1e7,
             },
 
         # agent model
