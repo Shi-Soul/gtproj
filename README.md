@@ -30,7 +30,7 @@ CUDA_VISIBLE_DEVICES=2 python baselines/train/run_ray_train.py --num_workers 50 
 python baselines/train/run_ray_train.py --num_workers 60 --num_gpus 0 --wandb 1 --exp pd_matrix
 
 # Continue Training
-CUDA_VISIBLE_DEVICES=0,1 python baselines/train/run_ray_train.py --num_workers 20 --num_gpus 2 --wandb 1 --exp pd_matrix --continue_training results/torch/pd_matrix/PPO_meltingpot_397b4_00000_0_2024-05-21_13-58-39/checkpoint_007270
+CUDA_VISIBLE_DEVICES=0 python baselines/train/run_ray_train.py --num_workers 20 --num_gpus 1 --wandb 1 --exp pd_matrix --continue_training results/torch/pd_matrix/PPO_meltingpot_397b4_00000_0_2024-05-21_13-58-39/checkpoint_007270
 
 # Run Evaluation
 RUN_DIR=results/torch/clean_up/PPO_meltingpot_5ecb9_00000_0_2024-05-21_14-28-20

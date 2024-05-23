@@ -1,5 +1,5 @@
-
-print("------" * 20, "Start Importing Libs", "------" * 20)
+SUPERINFO = "------" * 10 + "{info}"+ "------" * 10
+print(SUPERINFO.format(info="Importing Libraries"))
 import argparse
 import os
 import ray
@@ -117,7 +117,7 @@ def main():
 
     args = get_cli_args()
 
-    print("------" * 20, " Init Ray ", "------" * 20)
+    print(SUPERINFO.format(info="Init Ray"))
     # Set up Ray. Use local mode for debugging. Ignore reinit error.
     ray.init(local_mode=args.local, ignore_reinit_error=True)
 
@@ -179,41 +179,47 @@ def main():
 
     if args.continue_training is not None:
         # Load from checkpoint
-        assert trainer == "PPO", "Only PPO is supported for now."
+        # assert trainer == "PPO", "Only PPO is supported for now."
         # trainer = trainer.load(args.contiue_training)
-        trainer: ppo.PPO = ppo.PPO.from_checkpoint(args.continue_training)
-        trainer.restore(args.continue_training)
+        # trainer: ppo.PPO = ppo.PPO.from_checkpoint(args.continue_training)
+        # trainer.restore(args.continue_training)
         print(f"Continuing training from {args.continue_training}")
     else:
         print(f"Training {trainer} from scratch")
 
     # Setup checkpointing configurations
-    ckpt_config = air.CheckpointConfig(
-        num_to_keep=exp_config["keep"],
-        checkpoint_frequency=exp_config["freq"],
-        checkpoint_at_end=exp_config["end"],
-    )
+    # ckpt_config = air.CheckpointConfig(
+    #     num_to_keep=exp_config["keep"],
+    #     checkpoint_frequency=exp_config["freq"],
+    #     checkpoint_at_end=exp_config["end"],
+    # )
 
-    print("------" * 20, "Start Training", "------" * 20)
+    print(SUPERINFO.format(info="Start Training"))
     # Run Trials
-    results = tune.Tuner(
+    # results = tune.Tuner(
+    #     trainer,
+    #     param_space=configs.to_dict(),
+    #     run_config=air.RunConfig(
+    #         name=exp_config["name"],
+    #         callbacks=wdb_callbacks,
+    #         local_dir=exp_config["dir"],
+    #         stop=exp_config["stop"],
+    #         checkpoint_config=ckpt_config,
+    #         verbose=0,
+    #     ),
+    # ).fit()
+    results = tune.run(
         trainer,
-        param_space=configs.to_dict(),
-        run_config=air.RunConfig(
-            name=exp_config["name"],
-            callbacks=wdb_callbacks,
-            local_dir=exp_config["dir"],
-            stop=exp_config["stop"],
-            checkpoint_config=ckpt_config,
-            verbose=0,
-        ),
-    ).fit()
+        config=configs,
+        **exp_config,
+        callbacks=wdb_callbacks,
+        restore=args.continue_training,)
 
     best_result = results.get_best_result(metric="episode_reward_mean", mode="max")
     print(best_result)
 
     ray.shutdown()
-    print("------" * 20, "End Training", "------" * 20)
+    print(SUPERINFO.format(info="End Training"))
 
 
 if __name__ == "__main__":

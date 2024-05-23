@@ -73,7 +73,7 @@ def get_experiment_config(args, default_config):
                     "episode_reward_mean": 100,
         },
         "num_checkpoints": 5,
-        "checkpoint_interval": 10,
+        "checkpoint_interval": 50,
         "checkpoint_at_end": True,
         "results_dir": args.results_dir,
         "logging": args.logging,
@@ -144,12 +144,15 @@ def get_experiment_config(args, default_config):
     # Experiment Trials
     experiment_configs['name'] = params_dict['exp_name']
     experiment_configs['stop'] = params_dict['stopping']
-    experiment_configs['keep'] = params_dict['num_checkpoints']
-    experiment_configs['freq'] = params_dict['checkpoint_interval']
-    experiment_configs['end'] = params_dict['checkpoint_at_end']
+    experiment_configs['keep_checkpoints_num'] = params_dict['num_checkpoints']
+    experiment_configs['checkpoint_freq'] = params_dict['checkpoint_interval']
+    experiment_configs['checkpoint_at_end'] = params_dict['checkpoint_at_end']
+    # experiment_configs['keep'] = params_dict['num_checkpoints']
+    # experiment_configs['freq'] = params_dict['checkpoint_interval']
+    # experiment_configs['end'] = params_dict['checkpoint_at_end']
     if args.framework == 'tf':
-        experiment_configs['dir'] = f"{params_dict['results_dir']}/tf"
+        experiment_configs['local_dir'] = f"{params_dict['results_dir']}/tf"
     else:
-        experiment_configs['dir'] = f"{params_dict['results_dir']}/torch"
+        experiment_configs['local_dir'] = f"{params_dict['results_dir']}/torch"
  
     return run_configs, experiment_configs, tune_configs
