@@ -10,7 +10,7 @@
 ## Run
 ```bash
 cd mp_contest
-conda create -n gtp python=3.10
+conda create -n gtp python=3.10 -y
 conda activate gtp
 SYSTEM_VERSION_COMPAT=0 pip install dmlab2d
 pip install -e .
@@ -42,6 +42,7 @@ CUDA_VISIBLE_DEVICES=-1 python baselines/evaluation/evaluate.py --num_episodes 5
 
 RUN_DIR=results/torch/pd_matrix/PPO_meltingpot_397b4_00000_0_2024-05-21_13-58-39
 CKP_NAME=checkpoint_007270
+python baselines/train/render_models.py --config_dir $RUN_DIR --policies_dir $RUN_DIR/$CKP_NAME/policies --horizon 500
 python baselines/evaluation/evaluate.py --num_episodes 5 --config_dir $RUN_DIR --policies_dir $RUN_DIR/$CKP_NAME/policies  #--create_videos True --video_dir $RUN_DIR/videos
 
 

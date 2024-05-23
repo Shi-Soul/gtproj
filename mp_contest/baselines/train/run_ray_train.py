@@ -172,7 +172,7 @@ def main():
         # Load from checkpoint
         assert trainer== "PPO", "Only PPO is supported for now."
         # trainer = trainer.load(args.contiue_training)
-        trainer = ppo.PPO.from_checkpoint(args.contiue_training)
+        trainer:ppo.PPO = ppo.PPO.from_checkpoint(args.contiue_training).restore(args.contiue_training)
         print(f"Continuing training from {args.contiue_training}")
 
   # Setup checkpointing configurations
@@ -185,6 +185,7 @@ def main():
       param_space=configs.to_dict(),
       run_config=air.RunConfig(name = exp_config['name'], callbacks=wdb_callbacks, local_dir=exp_config['dir'], 
                                stop=exp_config['stop'], checkpoint_config=ckpt_config, verbose=0),
+
   ).fit()
 
   best_result = results.get_best_result(metric="episode_reward_mean", mode="max")
