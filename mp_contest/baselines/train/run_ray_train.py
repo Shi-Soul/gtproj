@@ -113,6 +113,7 @@ def main():
 
   args = get_cli_args()
 
+  print("------"*20," Init Ray ","------"*20)
   # Set up Ray. Use local mode for debugging. Ignore reinit error.
   ray.init(local_mode=args.local, ignore_reinit_error=True)
 
@@ -181,7 +182,8 @@ def main():
   # Setup checkpointing configurations
   ckpt_config = air.CheckpointConfig(num_to_keep=exp_config['keep'], checkpoint_frequency=exp_config['freq'], 
                                      checkpoint_at_end=exp_config['end'])
-
+  
+  print("------"*20,"Start Training","------"*20)
   # Run Trials
   results = tune.Tuner(
       trainer,
@@ -195,6 +197,7 @@ def main():
   print(best_result)
   
   ray.shutdown()
+  print("------"*20,"End Training","------"*20)
 
 
 if __name__ == "__main__":
