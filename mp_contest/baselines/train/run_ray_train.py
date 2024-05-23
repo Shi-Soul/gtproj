@@ -1,3 +1,5 @@
+
+print("------" * 20, "Start Importing Libs", "------" * 20)
 import argparse
 import os
 import ray
@@ -175,13 +177,13 @@ def main():
         # else:
         #   tune_config = tune.TuneConfig(reuse_actors=False)
 
-    if args.contiue_training is not None:
+    if args.continue_training is not None:
         # Load from checkpoint
         assert trainer == "PPO", "Only PPO is supported for now."
         # trainer = trainer.load(args.contiue_training)
-        trainer: ppo.PPO = ppo.PPO.from_checkpoint(args.contiue_training)
-        trainer.restore(args.contiue_training)
-        print(f"Continuing training from {args.contiue_training}")
+        trainer: ppo.PPO = ppo.PPO.from_checkpoint(args.continue_training)
+        trainer.restore(args.continue_training)
+        print(f"Continuing training from {args.continue_training}")
     else:
         print(f"Training {trainer} from scratch")
 
