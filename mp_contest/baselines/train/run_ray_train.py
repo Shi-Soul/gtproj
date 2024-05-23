@@ -12,197 +12,213 @@ from ray.tune import registry
 from ray.air.integrations.wandb import WandbLoggerCallback
 from baselines.train import make_envs
 
+
 def get_cli_args():
-  
-  parser = argparse.ArgumentParser(description="Training Script for Multi-Agent RL in Meltingpot")
-  
-  parser.add_argument(
-      "--num_workers",
-      type=int,
-      default=2,
-      help="Number of workers to use for sample collection. Setting it zero will use same worker for collection and model training.",
-  )
-  parser.add_argument(
-      "--num_gpus",
-      type=int,
-      default=0,
-      help="Number of GPUs to run on (can be a fraction)",
-  )
-  parser.add_argument(
-      "--local",
-      action="store_true",
-      help="If enabled, init ray in local mode.",
-  )
-  parser.add_argument(
-      "--no-tune",
-      action="store_true",
-      help="If enabled, no hyper-parameter tuning.",
-  )
-  parser.add_argument(
+
+    parser = argparse.ArgumentParser(
+        description="Training Script for Multi-Agent RL in Meltingpot"
+    )
+
+    parser.add_argument(
+        "--num_workers",
+        type=int,
+        default=2,
+        help="Number of workers to use for sample collection. Setting it zero will use same worker for collection and model training.",
+    )
+    parser.add_argument(
+        "--num_gpus",
+        type=int,
+        default=0,
+        help="Number of GPUs to run on (can be a fraction)",
+    )
+    parser.add_argument(
+        "--local",
+        action="store_true",
+        help="If enabled, init ray in local mode.",
+    )
+    parser.add_argument(
+        "--no-tune",
+        action="store_true",
+        help="If enabled, no hyper-parameter tuning.",
+    )
+    parser.add_argument(
         "--algo",
         choices=["ppo"],
         default="ppo",
         help="Algorithm to train agents.",
-  )
-  parser.add_argument(
+    )
+    parser.add_argument(
         "--framework",
         choices=["tf", "torch"],
         default="torch",
         help="The DL framework specifier (tf2 eager is not supported).",
-  )
-  parser.add_argument(
-      "--exp",
-      type=str,
-      choices = ['pd_matrix','clean_up'],
-      default="pd_matrix",
-      help="Name of the substrate to run",
-  )
-  parser.add_argument(
-      "--seed",
-      type=int,
-      default=123,
-      help="Seed to run",
-  )
-  parser.add_argument(
-      "--results_dir",
-      type=str,
-      default="./results",
-      help="Name of the wandb group",
-  )
-  parser.add_argument(
+    )
+    parser.add_argument(
+        "--exp",
+        type=str,
+        choices=["pd_matrix", "clean_up"],
+        default="pd_matrix",
+        help="Name of the substrate to run",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=123,
+        help="Seed to run",
+    )
+    parser.add_argument(
+        "--results_dir",
+        type=str,
+        default="./results",
+        help="Name of the wandb group",
+    )
+    parser.add_argument(
         "--logging",
         choices=["DEBUG", "INFO", "WARN", "ERROR"],
         default="INFO",
         help="The level of training and data flow messages to print.",
-  )
-  
-  parser.add_argument(
+    )
+
+    parser.add_argument(
         "--wandb",
         type=bool,
         default=False,
         help="Whether to use WanDB logging.",
-  )
+    )
 
-  parser.add_argument(
+    parser.add_argument(
         "--downsample",
         type=bool,
         default=True,
         help="Whether to downsample substrates in MeltingPot. Defaults to 8.",
-  )
+    )
 
-  parser.add_argument(
+    parser.add_argument(
         "--as-test",
         action="store_true",
         help="Whether this script should be run as a test.",
-  )
+    )
 
-  parser.add_argument(
-      "--continue_training",
+    parser.add_argument(
+        "--continue_training",
         type=str,
         default=None,
         help="Path to the checkpoint to continue training from.",
-  )
+    )
 
-  args = parser.parse_args()
-  print("Running trails with the following arguments: ", args)
-  return args
-
+    args = parser.parse_args()
+    print("Running trails with the following arguments: ", args)
+    return args
 
 
 def main():
 
-  args = get_cli_args()
+    args = get_cli_args()
 
-  print("------"*20," Init Ray ","------"*20)
-  # Set up Ray. Use local mode for debugging. Ignore reinit error.
-  ray.init(local_mode=args.local, ignore_reinit_error=True)
+    print("------" * 20, " Init Ray ", "------" * 20)
+    # Set up Ray. Use local mode for debugging. Ignore reinit error.
+    ray.init(local_mode=args.local, ignore_reinit_error=True)
 
-  # Register meltingpot environment
-  registry.register_env("meltingpot", make_envs.env_creator)
+    # Register meltingpot environment
+    registry.register_env("meltingpot", make_envs.env_creator)
 
-  # Initialize default configurations for native RLlib algorithms
-  if args.algo == "ppo":
-     trainer = "PPO"
-     default_config = ppo.PPOConfig()
-  else:
-     print('The selected option is not tested. You may encounter issues if you use the baseline \
-           policy configurations with non-tested algorithms')
-     raise NotImplementedError
-
-  # Fetch experiment configurations
-  configs, exp_config, _ = get_experiment_config(args, default_config)
-  
-  # Ensure GPU is available if set to True
-  if configs.num_gpus > 0:
-     import torch
-     if torch.cuda.is_available():
-        print("Using GPU device.")
-     else:
-        print("Either GPU is not available on this machine or not visible to this run. Training using CPU only.")
-        configs.num_gpus = 0
-
-
-  # Setup WanDB 
-#   if "WANDB_API_KEY" in os.environ and args.wandb:
-  if args.wandb:
-    wandb_project = f'{args.exp}_{args.framework}'
-    wandb_group = "meltingpot"
-
-    # Set up Weights And Biases logging if API key is set in environment variable.
-    wdb_callbacks = [
-        WandbLoggerCallback(
-            project=wandb_project,
-            group=wandb_group,
-            # api_key=os.environ["WANDB_API_KEY"],
-            log_config=True,
+    # Initialize default configurations for native RLlib algorithms
+    if args.algo == "ppo":
+        trainer = "PPO"
+        default_config = ppo.PPOConfig()
+    else:
+        print(
+            "The selected option is not tested. You may encounter issues if you use the baseline \
+           policy configurations with non-tested algorithms"
         )
-    ]
-  else:
-    wdb_callbacks = []
-    print("WARNING! No wandb API key found, running without wandb!")
+        raise NotImplementedError
 
+    # Fetch experiment configurations
+    configs, exp_config, _ = get_experiment_config(args, default_config)
 
-  # Setup hyper-parameter optimization configs here
-  # if not args.no_tune:
-  #   # NotImplementedError
-  #   tune_config = None
-  # else:
-  #   tune_config = tune.TuneConfig(reuse_actors=False)
+    # Ensure GPU is available if set to True
+    if configs.num_gpus > 0:
+        import torch
+
+        if torch.cuda.is_available():
+            print("Using GPU device.")
+        else:
+            print(
+                "Either GPU is not available on this machine or not visible to this run. Training using CPU only."
+            )
+            configs.num_gpus = 0
+
+    # Setup WanDB
+    #   if "WANDB_API_KEY" in os.environ and args.wandb:
+    if args.wandb:
+        wandb_project = f"{args.exp}_{args.framework}"
+        wandb_group = "meltingpot"
+
+        # Set up Weights And Biases logging if API key is set in environment variable.
+        wdb_callbacks = [
+            WandbLoggerCallback(
+                project=wandb_project,
+                group=wandb_group,
+                # api_key=os.environ["WANDB_API_KEY"],
+                log_config=True,
+            )
+        ]
+        print("Using WandB for logging.")
+    else:
+        wdb_callbacks = []
+        print("WARNING! No wandb API key found, running without wandb!")
+
+        # Setup hyper-parameter optimization configs here
+        # if not args.no_tune:
+        #   # NotImplementedError
+        #   tune_config = None
+        # else:
+        #   tune_config = tune.TuneConfig(reuse_actors=False)
 
     if args.contiue_training is not None:
         # Load from checkpoint
-        assert trainer== "PPO", "Only PPO is supported for now."
+        assert trainer == "PPO", "Only PPO is supported for now."
         # trainer = trainer.load(args.contiue_training)
-        trainer:ppo.PPO = ppo.PPO.from_checkpoint(args.contiue_training)
+        trainer: ppo.PPO = ppo.PPO.from_checkpoint(args.contiue_training)
         trainer.restore(args.contiue_training)
         print(f"Continuing training from {args.contiue_training}")
     else:
         print(f"Training {trainer} from scratch")
 
-  # Setup checkpointing configurations
-  ckpt_config = air.CheckpointConfig(num_to_keep=exp_config['keep'], checkpoint_frequency=exp_config['freq'], 
-                                     checkpoint_at_end=exp_config['end'])
-  
-  print("------"*20,"Start Training","------"*20)
-  # Run Trials
-  results = tune.Tuner(
-      trainer,
-      param_space=configs.to_dict(),
-      run_config=air.RunConfig(name = exp_config['name'], callbacks=wdb_callbacks, local_dir=exp_config['dir'], 
-                               stop=exp_config['stop'], checkpoint_config=ckpt_config, verbose=0),
+    # Setup checkpointing configurations
+    ckpt_config = air.CheckpointConfig(
+        num_to_keep=exp_config["keep"],
+        checkpoint_frequency=exp_config["freq"],
+        checkpoint_at_end=exp_config["end"],
+    )
 
-  ).fit()
+    print("------" * 20, "Start Training", "------" * 20)
+    # Run Trials
+    results = tune.Tuner(
+        trainer,
+        param_space=configs.to_dict(),
+        run_config=air.RunConfig(
+            name=exp_config["name"],
+            callbacks=wdb_callbacks,
+            local_dir=exp_config["dir"],
+            stop=exp_config["stop"],
+            checkpoint_config=ckpt_config,
+            verbose=0,
+        ),
+    ).fit()
 
-  best_result = results.get_best_result(metric="episode_reward_mean", mode="max")
-  print(best_result)
-  
-  ray.shutdown()
-  print("------"*20,"End Training","------"*20)
+    best_result = results.get_best_result(metric="episode_reward_mean", mode="max")
+    print(best_result)
+
+    ray.shutdown()
+    print("------" * 20, "End Training", "------" * 20)
 
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        print(">>>BUG: ",e)
-        import pdb;pdb.post_mortem()
+        print(">>>BUG: ", e)
+        import pdb
+
+        pdb.post_mortem()
