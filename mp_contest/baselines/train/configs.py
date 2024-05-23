@@ -46,12 +46,18 @@ def get_experiment_config(args, default_config):
         # training
         "seed": args.seed,
         "rollout_fragment_length": 10,
-        "train_batch_size": 400,
-        "sgd_minibatch_size": 32,
+        "train_batch_size": 8000,
+        "sgd_minibatch_size": 1024,
+        'num_sgd_iter': 20,
         "disable_observation_precprocessing": True,
         "use_new_rl_modules": False,
         "use_new_learner_api": False,
         "framework": args.framework,
+        "exploration_config":{
+            "type":"EpsilonGreedy",
+            "warmup_timesteps": 1000,
+            "epsilon_timesteps": 1e6,
+            },
 
         # agent model
         "fcnet_hidden": (4, 4),
@@ -63,7 +69,7 @@ def get_experiment_config(args, default_config):
         "lstm_use_prev_action": True,
         "lstm_use_prev_reward": False,
         "lstm_cell_size": 2,
-        "shared_policy": False,
+        "shared_policy": args.param_sharing,
 
         # experiment trials
         "exp_name": args.exp,
@@ -95,10 +101,12 @@ def get_experiment_config(args, default_config):
     # Training
     run_configs.train_batch_size = params_dict['train_batch_size']
     run_configs.sgd_minibatch_size = params_dict['sgd_minibatch_size']
+    run_configs.num_sgd_iter = params_dict['num_sgd_iter']
     run_configs.preprocessor_pref = None
     run_configs._disable_preprocessor_api = params_dict['disable_observation_precprocessing']
     run_configs.rl_module(_enable_rl_module_api=params_dict['use_new_rl_modules'])
     run_configs.training(_enable_learner_api=params_dict['use_new_learner_api'])
+    run_configs.exploration(exploration_config=params_dict['exploration_config'])
     run_configs = run_configs.framework(params_dict['framework'])
     run_configs.log_level = params_dict['logging']
     run_configs.seed = params_dict['seed']
@@ -109,27 +117,50 @@ def get_experiment_config(args, default_config):
 
     # Setup multi-agent policies. The below code will initialize independent
     # policies for each agent.
-    base_env = make_envs.env_creator(run_configs.env_config)
-    policies = {}
-    player_to_agent = {}
-    for i in range(len(player_roles)):
-        rgb_shape = base_env.observation_space[f"player_{i}"]["RGB"].shape
+    if not params_dict['shared_policy']:
+        base_env = make_envs.env_creator(run_configs.env_config)
+        policies = {}
+        player_to_agent = {}
+        for i in range(len(player_roles)):
+            rgb_shape = base_env.observation_space[f"player_{i}"]["RGB"].shape
+            sprite_x = rgb_shape[0]
+            sprite_y = rgb_shape[1]
+
+            policies[f"agent_{i}"] = policy.PolicySpec(
+                observation_space=base_env.observation_space[f"player_{i}"],
+                action_space=base_env.action_space[f"player_{i}"],
+                config={
+                    "model": {
+                        "conv_filters": [[16, [8, 8], 1],
+                                        [128, [sprite_x, sprite_y], 1]],
+                    },
+                })
+            player_to_agent[f"player_{i}"] = f"agent_{i}"
+
+        run_configs.multi_agent(policies=policies, policy_mapping_fn=(lambda agent_id, *args, **kwargs: 
+                                                                  player_to_agent[agent_id]))
+    else:
+        print("DEBUG: Use shared policy")
+        base_env = make_envs.env_creator(run_configs.env_config)
+        policies = {}
+        rgb_shape = base_env.observation_space["player_0"]["RGB"].shape
         sprite_x = rgb_shape[0]
         sprite_y = rgb_shape[1]
 
-        policies[f"agent_{i}"] = policy.PolicySpec(
-            observation_space=base_env.observation_space[f"player_{i}"],
-            action_space=base_env.action_space[f"player_{i}"],
+        policies[f"shared_agent"] = policy.PolicySpec(
+            observation_space=base_env.observation_space[f"player_0"],
+            action_space=base_env.action_space[f"player_0"],
             config={
                 "model": {
                     "conv_filters": [[16, [8, 8], 1],
                                     [128, [sprite_x, sprite_y], 1]],
                 },
             })
-        player_to_agent[f"player_{i}"] = f"agent_{i}"
-
-    run_configs.multi_agent(policies=policies, policy_mapping_fn=(lambda agent_id, *args, **kwargs: 
-                                                                  player_to_agent[agent_id]))
+        
+        run_configs.multi_agent(policies=policies, policy_mapping_fn=(lambda agent_id, *args, **kwargs:
+                                                                    "shared_agent"))
+        
+        
     
     run_configs.model["fcnet_hiddens"] = params_dict['fcnet_hidden']
     run_configs.model["post_fcnet_hiddens"] = params_dict['post_fcnet_hidden']

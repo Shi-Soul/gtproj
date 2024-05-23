@@ -108,6 +108,13 @@ def get_cli_args():
         help="Path to the checkpoint to continue training from.",
     )
 
+    parser.add_argument(
+        "--param_sharing",
+        action="store_true",
+        help="Whether to share parameters across agents.",
+        
+    )
+
     args = parser.parse_args()
     print("Running trails with the following arguments: ", args)
     return args
@@ -151,38 +158,23 @@ def main():
             configs.num_gpus = 0
 
     # Setup WanDB
-    #   if "WANDB_API_KEY" in os.environ and args.wandb:
     if args.wandb:
         wandb_project = f"{args.exp}_{args.framework}"
         wandb_group = "meltingpot"
 
-        # Set up Weights And Biases logging if API key is set in environment variable.
         wdb_callbacks = [
             WandbLoggerCallback(
                 project=wandb_project,
                 group=wandb_group,
-                # api_key=os.environ["WANDB_API_KEY"],
                 log_config=True,
             )
         ]
         print("Using WandB for logging.")
     else:
         wdb_callbacks = []
-        print("WARNING! No wandb API key found, running without wandb!")
 
-        # Setup hyper-parameter optimization configs here
-        # if not args.no_tune:
-        #   # NotImplementedError
-        #   tune_config = None
-        # else:
-        #   tune_config = tune.TuneConfig(reuse_actors=False)
 
     if args.continue_training is not None:
-        # Load from checkpoint
-        # assert trainer == "PPO", "Only PPO is supported for now."
-        # trainer = trainer.load(args.contiue_training)
-        # trainer: ppo.PPO = ppo.PPO.from_checkpoint(args.continue_training)
-        # trainer.restore(args.continue_training)
         print(f"Continuing training from {args.continue_training}")
     else:
         print(f"Training {trainer} from scratch")

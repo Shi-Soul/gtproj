@@ -25,7 +25,7 @@ wandb login # I have modified the code slightly, for the wandb to work, you need
 
 
 # Train 
-CUDA_VISIBLE_DEVICES=2 python baselines/train/run_ray_train.py --num_workers 50 --num_gpus 1 --wandb 1 --exp pd_matrix
+CUDA_VISIBLE_DEVICES=2 python baselines/train/run_ray_train.py --num_workers 8 --num_gpus 1 --wandb 1 --exp pd_matrix
 
 python baselines/train/run_ray_train.py --num_workers 60 --num_gpus 0 --wandb 1 --exp pd_matrix
 

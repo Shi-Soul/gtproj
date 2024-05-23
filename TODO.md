@@ -1,12 +1,6 @@
-
-
-
-
-- [ ] : run evaluation  
-    - pd:
-        - 4 test scenarios
-        - self-play evaluation 
-    - clean_up
-        - 1 test scenario
-        - self-play evaluation
+- [ ] : Train a good baseline
+- [ ] : CTDE training
+    - debug
+        CUDA_VISIBLE_DEVICES=0 python baselines/train/run_ray_train.py --num_workers 12 --num_gpus 1 --wandb 1 --exp clean_up --param_sharings
+    - train
 
