@@ -2,6 +2,7 @@ from meltingpot import substrate
 from ray.rllib.policy import policy
 from baselines.train import make_envs
 from ray.rllib.algorithms import ppo
+from myeps import MyEpsExp
 
 SUPPORTED_SCENARIOS = [
     'clean_up_7',
@@ -12,6 +13,7 @@ SUPPORTED_SCENARIOS = [
 ]
 
 IGNORE_KEYS = ['WORLD.RGB', 'INTERACTION_INVENTORIES', 'NUM_OTHERS_WHO_CLEANED_THIS_STEP']
+
 
 
 def get_experiment_config(args, default_config):
@@ -49,15 +51,22 @@ def get_experiment_config(args, default_config):
         "train_batch_size": 8000,
         "sgd_minibatch_size": 1024,
         'num_sgd_iter': 20,
+        "lr": 1e-4,
         "disable_observation_precprocessing": True,
         "use_new_rl_modules": False,
         "use_new_learner_api": False,
         "framework": args.framework,
-        "exploration_config":{
-            "type":"EpsilonGreedy",
-            "warmup_timesteps": 1e5,
-            "epsilon_timesteps": 1e7,
-            },
+        "exploration_config": MyEpsExp,
+        # "exploration_config":{
+            # "type": "MyEpsExp",
+            # "type":"RE3",
+            # "sub_exploration":{
+            #     "type": "StochasticSampling",
+            # }
+            # # "type":"EpsilonGreedy",
+            # # "warmup_timesteps": 1e5,
+            # # "epsilon_timesteps": 1e7,
+            # },
 
         # agent model
         "fcnet_hidden": (4, 4),
@@ -102,6 +111,7 @@ def get_experiment_config(args, default_config):
     run_configs.train_batch_size = params_dict['train_batch_size']
     run_configs.sgd_minibatch_size = params_dict['sgd_minibatch_size']
     run_configs.num_sgd_iter = params_dict['num_sgd_iter']
+    run_configs.lr = params_dict['lr']
     run_configs.preprocessor_pref = None
     run_configs._disable_preprocessor_api = params_dict['disable_observation_precprocessing']
     run_configs.rl_module(_enable_rl_module_api=params_dict['use_new_rl_modules'])
