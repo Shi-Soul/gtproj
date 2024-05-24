@@ -56,7 +56,12 @@ def get_experiment_config(args, default_config):
         "use_new_rl_modules": False,
         "use_new_learner_api": False,
         "framework": args.framework,
-        "exploration_config": MyEpsExp,
+        "exploration_config": {
+            "type":MyEpsExp,
+            "warmup_timesteps": 1e5,
+            "epsilon_timesteps": 1e7,
+            
+            },
         # "exploration_config":{
             # "type": "MyEpsExp",
             # "type":"RE3",
