@@ -1,7 +1,9 @@
+import platform
+from datetime import datetime
 from meltingpot import substrate
 from ray.rllib.policy import policy
-from baselines.train import make_envs
 from ray.rllib.algorithms import ppo
+from baselines.train import make_envs
 from baselines.train.myeps import MyEpsExp
 
 SUPPORTED_SCENARIOS = [
@@ -387,9 +389,10 @@ def get_experiment_config(args, default_config):
     # experiment_configs['keep'] = params_dict['num_checkpoints']
     # experiment_configs['freq'] = params_dict['checkpoint_interval']
     # experiment_configs['end'] = params_dict['checkpoint_at_end']
+    suffix = platform.node() + "_"+ datetime.now().strftime("%d%H%M")
     if args.framework == 'tf':
-        experiment_configs['local_dir'] = f"{params_dict['results_dir']}/tf"
+        experiment_configs['local_dir'] = f"{params_dict['results_dir']}/tf/{suffix}"
     else:
-        experiment_configs['local_dir'] = f"{params_dict['results_dir']}/torch"
+        experiment_configs['local_dir'] = f"{params_dict['results_dir']}/torch/{suffix}"
  
     return run_configs, experiment_configs, tune_configs
