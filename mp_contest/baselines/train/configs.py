@@ -2,7 +2,7 @@ from meltingpot import substrate
 from ray.rllib.policy import policy
 from baselines.train import make_envs
 from ray.rllib.algorithms import ppo
-from myeps import MyEpsExp
+from baselines.train.myeps import MyEpsExp
 
 SUPPORTED_SCENARIOS = [
     'clean_up_7',

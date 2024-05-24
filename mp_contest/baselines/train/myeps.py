@@ -3,6 +3,9 @@ import tree
 import random
 import torch
 from ray.rllib.utils.exploration.epsilon_greedy import EpsilonGreedy, ActionDistribution, TensorType, FLOAT_MIN, TorchMultiActionDistribution
+import sys 
+
+sys.modules['myeps'] = sys.modules[__name__]
 
 class MyEpsExp(EpsilonGreedy):
     def _get_torch_exploration_action(

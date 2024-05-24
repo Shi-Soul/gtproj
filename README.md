@@ -5,7 +5,13 @@
 - mp_contest: code for trainning agent
 
 
-
+logs
+- add params sharing
+    - Weiji Xie: I guess it can work in clean_up, not in pd_matrix.
+- tune configs ("train_batch_size","sgd_minibatch_size",'num_sgd_iter')
+- change Exploration method (MyEpsExp)
+    - In build-in methods, StochasticSampling (used by default) is lack of exploration; But EpsGreedy use deterministic policy outside epsilon, which is also bad.
+    - MyEpsExp: inherit from EpsilonGreedy, but use stochastic sampling outside epsilon.
 
 ## Run
 ```bash
@@ -37,11 +43,11 @@ RUN_DIR=results/torch/clean_up/PPO_meltingpot_5ecb9_00000_0_2024-05-21_14-28-20
 CKP_NAME=checkpoint_000100
 CUDA_VISIBLE_DEVICES=-1 python baselines/evaluation/evaluate.py --num_episodes 5 --config_dir $RUN_DIR --policies_dir $RUN_DIR/$CKP_NAME/policies --eval_on_scenario True --scenario clean_up_7 #--create_videos True --video_dir $RUN_DIR/videos
 
+    
 
 
-
-RUN_DIR=results/torch/pd_matrix/PPO_meltingpot_397b4_00000_0_2024-05-21_13-58-39
-CKP_NAME=checkpoint_007270
+RUN_DIR=results/torch/pd_matrix/PPO_meltingpot_3c764_00000_0_2024-05-24_05-05-27
+CKP_NAME=checkpoint_000250
 python baselines/train/render_models.py --config_dir $RUN_DIR --policies_dir $RUN_DIR/$CKP_NAME/policies --horizon 500
 python baselines/evaluation/evaluate.py --num_episodes 5 --config_dir $RUN_DIR --policies_dir $RUN_DIR/$CKP_NAME/policies  #--create_videos True --video_dir $RUN_DIR/videos
 
@@ -58,6 +64,10 @@ do
 done
 # Create videos may be super slow, depend on the hardware
 
+echo $RUN_DIR $CKP_NAME
+```
+
+```bash
 
 # For jidi submission & compete
 

@@ -3,9 +3,16 @@
 ## PD
 
 ### self play:
+
+baseline (rl7270)
 ![Alt text](pics/pd.png)
 
+rl_3c764_150 (150steps) (MyEpsExp)
+![Alt text](pics/3c764.png)
+
+
 ### test cases
+rl7270:
 ![Alt text](pics/pd0.png)
 
 ![Alt text](pics/pd1.png)
@@ -14,6 +21,14 @@
 
 ![Alt text](pics/pd3.png)
 
+rl_3c764_150:
+![Alt text](pics/3c764_0.png)
+
+![Alt text](pics/3c764_1.png)
+
+![Alt text](pics/3c764_2.png)
+
+![Alt text](pics/3c764_3.png)
 
 ### jidi scenarios:
 
@@ -57,4 +72,4 @@ random:
 RUN_DIR=results/torch/clean_up/PPO_meltingpot_5ecb9_00000_0_2024-05-21_14-28-20
 CKP_NAME=checkpoint_000100
 
-![Alt text](pics/image.png)
+![Alt text](pics/cu1.png)
