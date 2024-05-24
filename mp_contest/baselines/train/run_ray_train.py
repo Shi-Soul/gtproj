@@ -8,7 +8,7 @@ import ray
 from typing import *
 from ray import air
 from ray import tune
-from configs import get_experiment_config
+from configs import get_experiment_config, get_experiment_config_large
 from ray.rllib.algorithms import ppo
 from ray.tune import registry
 from ray.air.integrations.wandb import WandbLoggerCallback
@@ -114,6 +114,13 @@ def get_cli_args():
         help="Whether to share parameters across agents.",
         
     )
+    parser.add_argument(
+        "--network",
+        choices=["default", "large"],
+        default="default",
+        help="Whether to use the default network or the large network.",
+        
+    )
 
     args = parser.parse_args()
     print("Running trails with the following arguments: ", args)
@@ -143,8 +150,16 @@ def main():
         raise NotImplementedError
 
     # Fetch experiment configurations
-    configs, exp_config, _ = get_experiment_config(args, default_config)
-
+    if args.network == "default":
+        print("Using default network")
+        configs, exp_config, _ = get_experiment_config(args, default_config)
+    elif args.network == "large":
+        print("Using large network")
+        configs, exp_config, _ = get_experiment_config_large(args, default_config)
+    else:
+        raise ValueError("Invalid network configuration")
+    
+    
     # Ensure GPU is available if set to True
     if configs.num_gpus > 0:
         import torch
