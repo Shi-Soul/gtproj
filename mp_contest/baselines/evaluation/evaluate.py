@@ -64,7 +64,10 @@ def run_evaluation(args):
 
     policies_path = args.policies_dir
     roles = configs["env_config"]["roles"]
-    policy_ids = [f"agent_{i}" for i in range(len(roles))]
+    if not args.param_sharing:
+        policy_ids = [f"agent_{i}" for i in range(len(roles))]
+    else:
+        policy_ids = ["shared_agent" for i in range(len(roles))]
     names_by_role = defaultdict(list)
     for i in range(len(policy_ids)):
         names_by_role[roles[i]].append(policy_ids[i])
@@ -129,6 +132,12 @@ def main():
         "--video_dir",
         type=str,
         help="Directory where you want to store evaluation videos",
+    )
+    parser.add_argument(
+        "--param_sharing",
+        action="store_true",
+        help="Whether to share parameters across agents.",
+        
     )
 
     args = parser.parse_args()
