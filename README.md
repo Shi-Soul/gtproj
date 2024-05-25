@@ -48,11 +48,12 @@ CUDA_VISIBLE_DEVICES=-1 python baselines/evaluation/evaluate.py --num_episodes 5
     
 
 
-RUN_DIR=results/torch/pd_matrix/PPO_meltingpot_3c764_00000_0_2024-05-24_05-05-27
-CKP_NAME=checkpoint_000250
+RUN_DIR=results/torch/pd_matrix/PPO_meltingpot_e0761_00000_0_2024-05-24_13-10-03/
+CKP_NAME=checkpoint_001400
 python baselines/train/render_models.py --config_dir $RUN_DIR --policies_dir $RUN_DIR/$CKP_NAME/policies --horizon 500
-python baselines/evaluation/evaluate.py --num_episodes 5 --config_dir $RUN_DIR --policies_dir $RUN_DIR/$CKP_NAME/policies  #--create_videos True --video_dir $RUN_DIR/videos
+CUDA_VISIBLE_DEVICES=-1 python baselines/evaluation/evaluate.py --num_episodes 5 --config_dir $RUN_DIR --policies_dir $RUN_DIR/$CKP_NAME/policies  #--create_videos True --video_dir $RUN_DIR/videos
 
+# Create videos may be super slow, depend on the hardware
 
 declare -a scenarios=(
     "prisoners_dilemma_in_the_matrix__repeated_0"
@@ -62,9 +63,8 @@ declare -a scenarios=(
 )
 for scenario in "${scenarios[@]}"
 do
-    python baselines/evaluation/evaluate.py --num_episodes 5 --config_dir $RUN_DIR --policies_dir $RUN_DIR/$CKP_NAME/policies --eval_on_scenario True --scenario $scenario
+    CUDA_VISIBLE_DEVICES=1 python baselines/evaluation/evaluate.py --num_episodes 5 --config_dir $RUN_DIR --policies_dir $RUN_DIR/$CKP_NAME/policies --eval_on_scenario True --scenario $scenario --param_sharing
 done
-# Create videos may be super slow, depend on the hardware
 
 echo $RUN_DIR $CKP_NAME
 ```
@@ -89,3 +89,9 @@ python run_log.py --my_ai "rl_agent" --opponent "random"
 https://docs.ray.io/en/latest/rllib/rllib-env.html#multi-agent-and-hierarchical
 
 https://docs.ray.io/en/latest/rllib/rllib-algorithms.html#multi-agent
+
+https://wandb.ai/marshin/Meltingpot/reports/Meltingpot-initial-trials--VmlldzoyNTIxMDg5
+
+https://github.com/google-deepmind/meltingpot/blob/main/examples/rllib/self_play_train.py
+
+https://github.com/utkuearas/MeltingPot-Tess-v1

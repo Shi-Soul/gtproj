@@ -10,6 +10,9 @@ baseline (rl7270)
 rl_3c764_150 (150steps) (MyEpsExp)
 ![Alt text](pics/3c764.png)
 
+rl_e0761_1400 (1400 steps) (MyEpsExp) (param sharing) (default net)
+![Alt text](image.png)
+
 
 ### test cases
 rl7270:
@@ -29,6 +32,17 @@ rl_3c764_150:
 ![Alt text](pics/3c764_2.png)
 
 ![Alt text](pics/3c764_3.png)
+
+
+rl_e0761_1400
+![Alt text](pics/e0761_0.png)
+
+![Alt text](pics/e0761_1.png)
+
+![Alt text](pics/e0761_2.png)
+
+![Alt text](pics/e0761_3.png)
+
 
 ### jidi scenarios:
 
