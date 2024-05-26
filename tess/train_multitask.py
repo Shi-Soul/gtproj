@@ -184,7 +184,7 @@ def main():
     done_envs = [False] * num_envs
     start_time = time.time()
 
-    tqdm_iter = tqdm(range(num_updates))
+    tqdm_iter = tqdm(range(num_updates),ncols=130)
     for update in tqdm_iter:
 
         if "territory" in args.substrate:
@@ -321,12 +321,13 @@ def main():
                 .to("cuda")
             
             if save:
-                print(f"\nSave at: Update={update},\tStep={step},\tRew={mean_real}")
+                saved_name = f"./Tess/saved_models/{args.substrate}/{args.substrate}-v11-{run_idx}.pt"
+                print(f"\nSave at: Update={update},\tStep={step},\tRew={mean_real},\tPath={saved_name}")
                 try:
                     os.makedirs(f"./Tess/saved_models/{args.substrate}/",exist_ok=True)
                 except:
                     pass
-                torch.save(agent.state_dict(),f"./Tess/saved_models/{args.substrate}/{args.substrate}-v11-{run_idx}.pt")
+                torch.save(agent.state_dict(),saved_name)
 
             #done = torch.from_numpy(done).to("cuda")
             done = torch.from_numpy(done).to("cuda").view(-1,1).expand(-1,act_s[0])

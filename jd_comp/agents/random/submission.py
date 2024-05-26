@@ -17,7 +17,25 @@ def my_controller(observation, action_space, is_act_continuous=False):
         IF YOU NEED TO WRITE RULES PLEASE MATCH THIS INPUT
     observation: an state which in our project is a DICT
     action_space_list_each: only one action space which is wrapped into a list, :(
+    
+    PD_Matrix:
+    observation.keys()
+dict_keys(['COLLECTIVE_REWARD', 'READY_TO_SHOOT', 'RGB', 'INTERACTION_INVENTORIES', 'INVENTORY', 'WORLD.RGB', 'STEP_TYPE', 'REWARD'])
+    - COLLECTIVE_REWARD and REWARD: np.float64
+    - READY_TO_SHOOT: np.float64
+    - observation['RGB'].shape (40, 40, 3)
+    - observation['WORLD.RGB'].shape  (120, 184, 3)
+    - observation['INTERACTION_INVENTORIES']
+        array([[0., 0.],
+            [0., 0.]])
+    - observation['INVENTORY']      
+        array([1., 1.])
+    - observation['STEP_TYPE'] <StepType.FIRST: 0>
+    action_space = [Discrete(8)]
+    is_act_continuous = False
     """
+    # print("Input to agent: ",observation, action_space, is_act_continuous)
+    # import pdb;pdb.set_trace()
     agent_action = []
     for i in range(len(action_space)):
         action_ = sample_single_dim(action_space[i], is_act_continuous)
@@ -46,3 +64,36 @@ def sample_single_dim(action_space_list_each, is_act_continuous):
                 new_action[index] = 1
                 each.extend(new_action)
     return each
+
+
+def sample(action_space_list_each, is_act_continuous):
+    player = []
+    if is_act_continuous:
+        for j in range(len(action_space_list_each)):
+            each = action_space_list_each[j].sample()
+            player.append(each)
+    else:
+        player = []
+        for j in range(len(action_space_list_each)):
+            # each = [0] * action_space_list_each[j]
+            # idx = np.random.randint(action_space_list_each[j])
+            if action_space_list_each[j].__class__.__name__ == "Discrete":
+                each = [0] * action_space_list_each[j].n
+                idx = action_space_list_each[j].sample()
+                each[idx] = 1
+                player.append(each)
+            elif (
+                action_space_list_each[j].__class__.__name__ == "MultiDiscreteParticle"
+            ):
+                each = []
+                nvec = action_space_list_each[j].high
+                sample_indexes = action_space_list_each[j].sample()
+
+                for i in range(len(nvec)):
+                    dim = nvec[i] + 1
+                    new_action = [0] * dim
+                    index = sample_indexes[i]
+                    new_action[index] = 1
+                    each.extend(new_action)
+                player.append(each)
+    return player

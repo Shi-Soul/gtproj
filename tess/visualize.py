@@ -8,13 +8,12 @@ import sys
 import numpy as np
 import random
 
-sys.path.append("/home/tess/Desktop/MARL/")
 args = argparse.ArgumentParser(description="Visualize Trained Models")
 args.add_argument("--video-dir",type=str)
-args.add_argument("--agent-file",type=str,default="./Tess/saved_models/clean_up/best_clean_up-v2.pt")
+args.add_argument("--agent-file",type=str,default="./Tess/saved_models/prisoners_dilemma_in_the_matrix__repeated/prisoners_dilemma_in_the_matrix__repeated-v11-2604-0528-202405.pt")
 args.add_argument("--substrate",type=str,default="clean_up")
-args.add_argument("--env",type=str,default="TessEnv-v3")
-args.add_argument("--model",type=str,default="impala_v4_cont")
+args.add_argument("--env",type=str,default="TessEnv-v4")
+args.add_argument("--model",type=str,default="impala_v4_new")
 args.add_argument("--device",type=str,default="cuda")
 args.add_argument("--bot",type=bool,default=False)
 args.add_argument("--bot-file",type=str)
@@ -28,6 +27,7 @@ env = gym.make(args.env, name=args.substrate)
 obs_s = env.observation_space.shape
 act_s = env.action_space.shape
 num_act = env.num_act
+# import pdb;pdb.set_trace()
 
 #Setting Up Model
 kwargs = {"inv":"prisoner" in args.substrate}
@@ -55,9 +55,15 @@ if args.bot:
 else:
     h_n = torch.zeros((obs_s[0],256)).to(args.device)   
     c_n = torch.zeros((obs_s[0],256)).to(args.device)
+    # For PD Matirx: 
+        # (Pdb) h_n.shape
+        # torch.Size([2, 256])
+        # (Pdb) c_n.shape
+        # torch.Size([2, 256])
 
 if "prisoner" in args.substrate:
     inv = torch.ones((act_s[0],2), device="cuda", dtype=torch.float32) / 2
+    # inv.shape: torch.Size([2, 2])
 else:
     inv = False
 
@@ -73,34 +79,32 @@ while not done:
         images.append(img)
 
         obs = torch.from_numpy(obs).to(args.device).permute((0,3,1,2))
+        # obs.shape:  torch.Size([2, 3, 20, 20])
+        
+        if "prisoner" in args.substrate:
+            inv = torch.tensor(env.get_attr("invs"), dtype=torch.float32,device="cuda")
+            # inv = torch.ones((act_s[0],2), device="cuda", dtype=torch.float32) / 2
+            # inv.shape: torch.Size([2, 2])
         if "3" in args.env or "Terr" in args.env:
             time_d = torch.tensor(env.counter, device="cuda").view(1,1).expand(env.num_players,1) / 1000
         else:
             time_d = None
+            
         shoot = torch.tensor(env.shoot,device="cuda").view(-1)
+        # shape: torch.Size([2])
+        
         #shoot = torch.zeros(env.num_players,device="cuda",dtype=torch.float32)
+        import pdb;pdb.set_trace()
         if args.bot:
+            raise NotImplementedError
             bot_act, (bot_h, bot_c), _ = bots.get_action(obs[:bot_count,:,:,:], shoot=shoot[:bot_count], history=(bot_h,bot_c),\
                                     timestep=time_d[:bot_count],inv=inv,reduce=True)
             act, (h_n, c_n), entropy = agent.get_action(obs[bot_count:,:,:,:], shoot=shoot[bot_count:], history=(h_n, c_n), timestep = time_d[bot_count:], inv=inv, reduce=True)
             act = torch.concatenate((bot_act,act),dim=0) 
         else:
-            act, (h_n, c_n), entropy = agent.get_action(obs, shoot=shoot, history=(h_n, c_n), timestep = time_d, inv=inv, reduce=True)
+            act, log_prob, value, (h_0, c_0) = agent.sample_act_and_value(obs, shoot=shoot, history=(h_n, c_n), timestep = time_d, inv=inv, reduce=True)
 
-        
-        entropies.append(entropy.cpu().mean().item())
-        """act[8:] = torch.randint(0,num_act,size=(8,))
-        part = act[8:]
-        part[part == 7] = 0"""
-        #act[0] = 0
         obs, rew, done, info = env.step(act.cpu().numpy())
-
-        #inv = torch.tensor(env.invs, dtype=torch.float32, device="cuda")
-
-        img = env.last_partial_obs
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-        #cv2.imshow("image", cv2.resize(img, (700,700), interpolation=cv2.INTER_NEAREST))
-        #cv2.waitKey(100)
 
 images = np.array(images)
 width = images[0].shape[1]
@@ -114,7 +118,8 @@ for img in images:
 
 video.release()
 
-print(np.mean(entropies))
-print(np.std(entropies))
+# print(np.mean(entropies))
+# print(np.std(entropies))
+print(env.real_rewards)
 print(np.mean(env.real_rewards[0]))
 print(np.sum(env.real_rewards))

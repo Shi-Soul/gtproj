@@ -30,6 +30,7 @@ pip install "gymnasium<0.30,>=0.28.1" # here is a Library Version Conflict, We a
 pip install tqdm
 ```
 
+Baseline Training
 ```bash 
 wandb login # I have modified the code slightly, for the wandb to work, you need to login first
 
@@ -74,6 +75,7 @@ done
 echo $RUN_DIR $CKP_NAME
 ```
 
+Jidi
 ```bash
 
 # For jidi submission & compete
@@ -87,10 +89,15 @@ python run_log.py --my_ai "rl_agent" --opponent "random"
 
 ```
 
+
+Tess
 ```bash
 
 # Train Tess
 CUDA_VISIBLE_DEVICES=1 python train_multitask.py --substrate prisoners_dilemma_in_the_matrix__repeated
+
+# Visualize
+python visualize.py --substrate prisoners_dilemma_in_the_matrix__repeated
 ```
 
 

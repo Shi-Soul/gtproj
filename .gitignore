@@ -23,7 +23,6 @@ __pycache__/
 *.manifest
 *.spec
 
-
 # Jupyter Notebook
 .ipynb_checkpoints
 
@@ -34,5 +33,6 @@ __pycache__/
 assets/
 results/
 
+*.avi
 */wandb
 */Tess/saved_models
