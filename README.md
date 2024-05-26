@@ -98,6 +98,9 @@ CUDA_VISIBLE_DEVICES=1 python train_multitask.py --substrate prisoners_dilemma_i
 
 # Visualize
 python visualize.py --substrate prisoners_dilemma_in_the_matrix__repeated
+
+# Evaluate (for now only pd_matrix )
+CUDA_VISIBLE_DEVICES=-1 python baselines/evaluation/eval_tess.py --num_episodes 5 --config_dir RUN_DIR --policies_dir /home/wjxie/wjxie/env/gtproj/tess/Tess/saved_models/prisoners_dilemma_in_the_matrix__repeated/prisoners_dilemma_in_the_matrix__repeated-v11-2604-0528-202405.pt
 ```
 
 

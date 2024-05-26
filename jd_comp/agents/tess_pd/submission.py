@@ -3,7 +3,7 @@ from typing import Tuple, List, Any
 import random
 import torch
 import numpy as np
-
+import time
 import os
 import cv2
 from pathlib import Path
@@ -17,14 +17,14 @@ AGENT_FILE = str(base_dir)+"/pd_best.pt"
 OBS_S = (2, 20, 20, 3)
 ACT_S = (2,)
 NUM_ACT = 8
-DEVICE = "cuda"
+DEVICE = "cpu"
 
-def get_agent():
+def get_agent(agent_file=AGENT_FILE):
     kwargs = {"inv":True}
     from impala_v4_new import Model as model
     agent = model(OBS_S[1:], NUM_ACT, task_count=2, **kwargs)
     agent = agent.to(DEVICE)
-    agent.load_state_dict(torch.load(f"{AGENT_FILE}"))
+    agent.load_state_dict(torch.load(agent_file, map_location=torch.device(DEVICE)))
     return agent
 
 class EvalPolicy():
@@ -34,10 +34,11 @@ class EvalPolicy():
 
     def __init__(
         self,
+        agent_file=AGENT_FILE,
         *args,
         **kwargs,
     ) -> None:
-        self.agent = get_agent()
+        self.agent = get_agent(agent_file)
 
     def initial_state(self):
         """See base class."""
@@ -65,25 +66,25 @@ class EvalPolicy():
             invs.append([i[0]/summa,i[1]/summa])
         
         obs = torch.from_numpy(obs).to(DEVICE).permute((0,3,1,2))
-        inv = torch.tensor(invs, dtype=torch.float32,device="cuda")
-        shoot = torch.tensor(shoot,device="cuda").view(-1)
+        inv = torch.tensor(invs, dtype=torch.float32,device=DEVICE)
+        shoot = torch.tensor(shoot,device=DEVICE).view(-1)
         act, log_prob, value, self.state = self.agent.sample_act_and_value(obs, shoot=shoot, history=self.state, timestep = None, inv=inv, reduce=True)
         return act
+    def close(self):
+        pass
 
 
 class Population:
     def __init__(
         self,
-        ckpt_paths: str,
         policy_ids: List[str],
-        scale: float,
+        *args,
+        **kwargs
     ):
         self._policies = {
-            p_id: EvalPolicy(ckpt_paths, p_id, scale) for p_id in policy_ids
+            p_id: EvalPolicy() for p_id in policy_ids
         }
-        self.ckpt_paths = ckpt_paths
         self._policy_ids = policy_ids
-        self.scale = scale
 
         self.selected_ids = None
         self.selected_poilces = []
@@ -98,7 +99,6 @@ class Population:
         self.selected_ids = [
             random.choice(self._policy_ids) for _ in range(len(multi_agent_ids))
         ]
-        # logger.debug(f"Population.prepare: Select {self.selected_ids}")
         self.selected_poilces = [self._policies[p_id] for p_id in self.selected_ids]
         for p in self.selected_poilces:
             p.initial_state()
@@ -112,15 +112,8 @@ class Population:
         # torch.cuda.empty_cache()
 
     def step(self, observations: List[Any], prev_rewards: List[Any]):
-        # if dm_env.StepType.FIRST
         if observations[0]["STEP_TYPE"] == 0:
-            # print("init policy")
-            # XXX: Warning: rubbish
-            # only for pd_matrix substrate, and assume the focal pop in each scenario is one.
-            # only work for settings of fixed scenarios and competition
             self.prepare([0])
-        # assert len(observations) == len(self.selected_poilces), \
-        #     f"{len(observations)}  != {len(self.selected_poilces)}"
         actions = []
         for pi, obs, prev_r in zip(self.selected_poilces, observations, prev_rewards):
             actions.append(pi.step(obs, prev_r))
@@ -128,26 +121,9 @@ class Population:
         return actions
 
 def init():
-    # ray.init()
-    my_path = os.path.dirname(os.path.abspath(__file__))
-    my_path = os.path.join(my_path, "pd_policy")
+    policy_ids = [f"agent_{i}" for i in range(2)]
 
-    # config_file = f"{my_path}/params.json"
-    # f = open(config_file)
-    # configs = json.load(f)
-    # scaled = configs["env_config"]["scaled"]
-
-    # TODO: agent path at "pd_policy/checkpoint_000001/"
-    policies_path = os.path.join(my_path, "checkpoint_000001", "policies")
-    # roles = configs["env_config"]["roles"]
-    roles= [
-      "default",
-      "default"
-    ],
-    scaled= 8,
-    policy_ids = [f"agent_{i}" for i in range(len(roles))]
-
-    mypop = Population(policies_path, policy_ids, scale=scaled)
+    mypop = Population(policy_ids)
     return mypop
 
 mypop = init()
@@ -175,13 +151,13 @@ dict_keys(['COLLECTIVE_REWARD', 'READY_TO_SHOOT', 'RGB', 'INTERACTION_INVENTORIE
     action_space = [Discrete(8)]
     is_act_continuous = False
     """
-    global mypop
-    # XXX: fix the mismatched type of obs and act_space
-    try:    
-        actions = mypop.step([observation], [observation["REWARD"]])
-    except Exception as e:
-        print("BUG>>>>> ", e)
-        import pdb; pdb.post_mortem()
+    # start_time = time.time()
+    # try:    
+    #     actions = mypop.step([observation], [observation["REWARD"]])
+    # except Exception as e:
+    #     print("BUG>>>>> ", e)
+    #     import pdb; pdb.post_mortem()
+    actions = mypop.step([observation], [observation["REWARD"]])
         
     
     ret = []
@@ -191,12 +167,15 @@ dict_keys(['COLLECTIVE_REWARD', 'READY_TO_SHOOT', 'RGB', 'INTERACTION_INVENTORIE
             each = act
         else:
             if act_space.__class__.__name__ == "Discrete":
+                # One hot encoding
                 each = [0] * act_space.n
-                idx = act
-                each[idx] = 1
+                each[act] = 1
             elif act_space.__class__.__name__ == "MultiDiscreteParticle":
                 raise not NotImplementedError
             else:
                 raise not NotImplementedError
         ret.append(each)
+    # end_time = time.time()
+    # if end_time - start_time > 0.8:
+    #     print(f"Too Slow!! Time: {end_time - start_time}")
     return ret
