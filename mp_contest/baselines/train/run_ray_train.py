@@ -150,7 +150,10 @@ def main():
         raise NotImplementedError
 
     # Fetch experiment configurations
-    if args.network == "default":
+    if True:
+        from baselines.train.configs_v2 import get_experiment_config, get_experiment_config_large
+        configs, exp_config, _ = get_experiment_config_large(args, default_config)
+    elif args.network == "default":
         print("Using default network")
         configs, exp_config, _ = get_experiment_config(args, default_config)
     elif args.network == "large":

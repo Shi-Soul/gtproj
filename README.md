@@ -24,6 +24,10 @@ sh ray_patch.sh
 pip install jax==0.4.12 jaxlib==0.4.12
 pip install gym==0.22.0
 
+# for tess
+pip install stable-baselines3 opencv-python shimmy 
+pip install "gymnasium<0.30,>=0.28.1" # here is a Library Version Conflict, We are running on the tip of the knife
+pip install tqdm
 ```
 
 ```bash 

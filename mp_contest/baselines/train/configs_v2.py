@@ -49,9 +49,9 @@ def get_experiment_config_large(args, default_config):
 
         # training
         "seed": args.seed,
-        # "rollout_fragment_length": 10,
+        "rollout_fragment_length": 100,
         "train_batch_size": 8000,
-        "sgd_minibatch_size": 1024,
+        "sgd_minibatch_size": 512,
         'num_sgd_iter': 20,
         "lr": 1e-4,
         "disable_observation_precprocessing": True,
@@ -77,8 +77,8 @@ def get_experiment_config_large(args, default_config):
             # },
 
         # agent model
-        "fcnet_hidden": (256, 256),
-        "post_fcnet_hidden": (128,),
+        "fcnet_hidden": (64, 64),
+        "post_fcnet_hidden": (256,),
         "cnn_activation": "silu",
         "fcnet_activation": "relu",
         "post_fcnet_activation": "relu",
@@ -113,6 +113,7 @@ def get_experiment_config_large(args, default_config):
 
     # Resources 
     run_configs.num_rollout_workers = params_dict['num_rollout_workers']
+    run_configs.rollout_fragment_length = params_dict['rollout_fragment_length']
     run_configs.num_gpus = params_dict['num_gpus']
 
 
