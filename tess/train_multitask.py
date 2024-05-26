@@ -21,7 +21,7 @@ from models.impala_v4_new import Model
 torch.set_printoptions(profile="full")
 np.set_printoptions(precision=4)
 
-run_idx = time.time()
+run_idx = time.strftime("%d%H-%M%S-%Y%m")
 
 #Reproducibility
 np.random.seed(0)
@@ -129,7 +129,7 @@ def main():
     if not args.debug:
         import wandb
         wandb.login()
-        run = wandb.init(project="Tess",name=f"{num_envs}-{num_steps}-{config.minibatch}-{lr}-{clip_coef}-{ent_coef}-{epoch}")
+        run = wandb.init(project="Tess",name=f"{args.substrate}-{num_envs}-{num_steps}-{config.minibatch}-{lr}-{clip_coef}-{ent_coef}-{epoch}")
 
     #Setting Up Optimizer
     if config.optimizer == "rmsprop":
@@ -321,12 +321,12 @@ def main():
                 .to("cuda")
             
             if save:
-                print(f"\nSave at: Update={update},Step={step}, Rew={mean_real}")
+                print(f"\nSave at: Update={update},\tStep={step},\tRew={mean_real}")
                 try:
                     os.makedirs(f"./Tess/saved_models/{args.substrate}/",exist_ok=True)
                 except:
                     pass
-                torch.save(agent.state_dict(),f"./Tess/saved_models/{args.substrate}/{args.substrate}-v11.pt")
+                torch.save(agent.state_dict(),f"./Tess/saved_models/{args.substrate}/{args.substrate}-v11-{run_idx}.pt")
 
             #done = torch.from_numpy(done).to("cuda")
             done = torch.from_numpy(done).to("cuda").view(-1,1).expand(-1,act_s[0])
@@ -529,7 +529,7 @@ def main():
         os.makedirs(f"./Tess/saved_models/{args.substrate}/",exist_ok=True)
     except:
         pass
-    torch.save(agent.state_dict(),f"./Tess/saved_models/{args.substrate}/{args.substrate}-last_output.pt")
+    torch.save(agent.state_dict(),f"./Tess/saved_models/{args.substrate}/{args.substrate}-last_output-{run_idx}.pt")
 
 
 

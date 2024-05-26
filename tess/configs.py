@@ -3,7 +3,7 @@
 class ImpalaConfig:
     num_envs=4
     epoch=1
-    num_steps=128
+    num_steps=256
     total_timesteps=20000000
     minibatch=4
     gamma=.99
