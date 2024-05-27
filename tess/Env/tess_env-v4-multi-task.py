@@ -7,6 +7,8 @@ import cv2
 import queue
 import random
 
+NUM_CLEANUP_HIS = 10
+
 class TessEnv(gym.Env):
 
     def __init__(self, render_mode="rgb_array", **kwargs):
@@ -32,10 +34,12 @@ class TessEnv(gym.Env):
             self.random_player = random.randint(0,self.num_players-1)
         #Clean up specific
         if self.name == "clean_up":
-            self.clean_up_histories = [queue.Queue(maxsize=10) for _ in range(self.num_players)]
+            self.clean_up_histories = [queue.Queue(maxsize=NUM_CLEANUP_HIS) for _ in range(self.num_players)]
             for ind,i in enumerate(self.clean_up_histories):
-                for _ in range(10):
+                for _ in range(NUM_CLEANUP_HIS):
                     i.put(0)
+                    
+                    
             self.clean_rewards = [0] * self.num_players
 
         #Harvest Specific
@@ -99,6 +103,7 @@ class TessEnv(gym.Env):
             for ind, clean_reward in enumerate(self.clean_rewards):
                 self.clean_up_histories[ind].get()
                 self.clean_up_histories[ind].put(clean_reward)
+                
             self.clean_rewards = [0] * self.num_players
 
 
@@ -154,10 +159,19 @@ class TessEnv(gym.Env):
     def on_next(self, event):
         
         if "clean_up" in self.name:
+            ind = int(event[1][2])-1
             if event[0] == "player_cleaned":
-                self.rewards[int(event[1][2])-1][0] += .1
-                self.clean_rewards[int(event[1][2])-1] += .01
+                # self.rewards[int(event[1][2])-1][0] += .1
+                # self.rewards[ind][0] += .1
+                
+                for ind,history in enumerate(self.clean_up_histories):
+                    hist_list = sum(list(history.queue)) /0.02 /3
+                    self.rewards[ind][0] += (np.tanh(NUM_CLEANUP_HIS-  hist_list)+1)/2*0.1
+                    # The more you clean, the less rewards you get when you clean
+                self.clean_rewards[ind] += .02
+                
             elif event[0] == "edible_consumed":
+                # if you are hardworking, you get a little more rewards when you eat
                 for ind,history in enumerate(self.clean_up_histories):
                     hist_list = sum(list(history.queue)) 
                     self.rewards[ind][0] += hist_list 

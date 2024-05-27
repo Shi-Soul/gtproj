@@ -30,6 +30,7 @@ torch.manual_seed(0)
 torch.backends.cudnn.benchmark = True
 # torch.use_deterministic_algorithms(True)
 
+
 import importlib
 def parse_args():
 
@@ -40,6 +41,7 @@ def parse_args():
     parser.add_argument("--env-version",type=str,default="TessEnv-v4")
     parser.add_argument("--debug",type=bool,default=False)
     parser.add_argument("--save-stat",type=str,default="mean_real")
+    parser.add_argument("--expname",type=str,default="v")
 
     return parser.parse_args()
 
@@ -48,6 +50,7 @@ def main():
     args = parse_args()
     # Getting config information
     config = getattr(configs, args.train_config) 
+    EXPNAME=args.expname
 
     #Setting Up Environment
     ids = [False] * (config.num_envs // 2) + [True] * (config.num_envs // 2)
@@ -129,7 +132,7 @@ def main():
     if not args.debug:
         import wandb
         wandb.login()
-        run = wandb.init(project="Tess",name=f"{args.substrate}-{num_envs}-{num_steps}-{config.minibatch}-{lr}-{clip_coef}-{ent_coef}-{epoch}")
+        run = wandb.init(project="Tess",name=f"{args.substrate}-{EXPNAME}-{num_envs}-{num_steps}-{config.minibatch}-{lr}-{clip_coef}-{ent_coef}-{epoch}")
 
     #Setting Up Optimizer
     if config.optimizer == "rmsprop":
