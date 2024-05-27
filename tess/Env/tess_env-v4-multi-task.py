@@ -155,20 +155,21 @@ class TessEnv(gym.Env):
                 # self.clean_rewards[ind] += .01
                 # self.rewards[ind][0] += .1
                 
-                for ind,history in enumerate(self.clean_up_histories):
-                    hist_list = sum(list(history.queue)) /0.02 /3
-                    self.rewards[ind][0] += (np.tanh(NUM_CLEANUP_HIS-  hist_list)+1)/2*0.1
+                # for ind,history in enumerate(self.clean_up_histories):
+                hist_list = sum(list(self.clean_up_histories[ind].queue)) /0.01 /2
+                scaled_rew = (np.tanh(NUM_CLEANUP_HIS-  hist_list)+1)/2
+                self.rewards[ind][0] += scaled_rew*0.1
                     # The more you clean, the less rewards you get when you clean
-                self.clean_rewards[ind] += .02
+                self.clean_rewards[ind] += scaled_rew*0.01
                 
             elif event[0] == "edible_consumed":
-                ind = int(event[1][2])-1
-                # if you are hardworking, you get a little more rewards when you eat
+                theind = int(event[1][2])-1
+                # if you are hardworking, you get a little more rewards when **someone** eat
                 for ind,history in enumerate(self.clean_up_histories):
                     hist_list = sum(list(history.queue)) 
                     self.rewards[ind][0] += hist_list 
-                self.rewards[int(event[1][2])-1][1] += .1
-                self.real_rewards[int(event[1][2])-1] += 1
+                self.rewards[theind][1] += .1
+                self.real_rewards[theind] += 1
 
         elif "harvest" in self.name:
             if event[0] == "eating":
@@ -210,8 +211,16 @@ class TessEnv(gym.Env):
                 # for u in range(self.num_players):
                 #     self.rewards[u][0] += 0.1
                 # import pdb;pdb.set_trace()
+                # Heuristics:
+                    # deny is better
+                    # don't eat too much, 3 is good
+                    
+                    
+                
                 ind = int(event[1][2])-1
-                self.rewards[ind][0] += 0.1
+                inv = self.total_inv[ind]
+                
+                self.rewards[ind][0] += (0.1 + 0.05*(inv[1]+1)/sum(inv+1) + np.tanh(-sum(inv)+3)*0.05)*10
 
             if event[0] == "interaction":
                 # event
