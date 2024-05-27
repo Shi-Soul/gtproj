@@ -9,7 +9,7 @@ import torch
 args = argparse.ArgumentParser()
 args.add_argument("--substrate",type=str,default="clean_up")
 args = args.parse_args()
-env = gym.make("TessEnv-v3",name=args.substrate)
+env = gym.make("TessEnv-v4",name=args.substrate)
 
 obs = env.reset()
 done = False

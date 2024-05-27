@@ -149,9 +149,10 @@ class TessEnv(gym.Env):
     def on_next(self, event):
         
         if "clean_up" in self.name:
-            ind = int(event[1][2])-1
+            # import pdb;pdb.set_trace()
             if event[0] == "player_cleaned":
-                # self.rewards[int(event[1][2])-1][0] += .1
+                ind = int(event[1][2])-1
+                # self.clean_rewards[ind] += .01
                 # self.rewards[ind][0] += .1
                 
                 for ind,history in enumerate(self.clean_up_histories):
@@ -161,6 +162,7 @@ class TessEnv(gym.Env):
                 self.clean_rewards[ind] += .02
                 
             elif event[0] == "edible_consumed":
+                ind = int(event[1][2])-1
                 # if you are hardworking, you get a little more rewards when you eat
                 for ind,history in enumerate(self.clean_up_histories):
                     hist_list = sum(list(history.queue)) 
@@ -238,7 +240,7 @@ class TessEnv(gym.Env):
                 scaled_rew_timing = lambda x: (rew_timing(x)-2)/20
                 self.rewards[row_ind][1] += (0.5) + scaled_rew_timing(sum(row_inv)) + row_rew + 0.05*(row_rew+col_rew)
                 self.rewards[col_ind][1] += (0.2) + scaled_rew_timing(sum(col_inv)) + col_rew + 0.05*(row_rew+col_rew)
-                import pdb;pdb.set_trace()
+                
 
         elif "territory" in self.name:
             if event[0] == "claimed_unclaimed_resource":
