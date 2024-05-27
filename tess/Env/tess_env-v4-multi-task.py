@@ -53,7 +53,7 @@ class TessEnv(gym.Env):
         
         #Prisoner Specific
         if "prisoner" in self.name:
-            self.cooparate = [0] * self.num_players
+            self._pd_seeit = [False] * self.num_players
 
         res = self.env.reset()
 
@@ -109,6 +109,16 @@ class TessEnv(gym.Env):
 
         #Inventory specific
         if "prisoner" in self.name:
+            # Find opponent. If we find it, give interaction reward
+            for ind,i in enumerate(timestep.observation):
+                rgb_obs = i["RGB"]
+                red = np.array([200,100,50])
+                num_red = (rgb_obs==red).all(axis=2).sum()
+                if num_red>0 and self._pd_seeit[ind]==False:
+                    # print("DEBUG: Seeit!",ind,num_red)
+                    self.rewards[ind][1]+=1
+                    self._pd_seeit[ind]=True
+            # Set invs
             invs = [i["INVENTORY"] for i in timestep.observation]
             self.total_inv = invs
             self.invs = []
@@ -220,7 +230,7 @@ class TessEnv(gym.Env):
                 ind = int(event[1][2])-1
                 inv = self.total_inv[ind]
                 
-                self.rewards[ind][0] += (0.1 + 0.05*(inv[1]+1)/sum(inv+1) + np.tanh(-sum(inv)+3)*0.05)*10
+                self.rewards[ind][0] += 1*(0.1 + 0.03*(inv[1]+1)/sum(inv+1) + np.tanh(-sum(inv)+3)*0.03)
 
             if event[0] == "interaction":
                 # event
