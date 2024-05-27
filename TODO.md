@@ -3,7 +3,5 @@
     - clean_up : no
 - [ ] : param sharing
     - train
-- [ ] : 查一查为什么不能同时跑多个task
-- [ ] : 看看网络形状
 
 
