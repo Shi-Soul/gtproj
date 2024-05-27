@@ -110,6 +110,7 @@ class TessEnv(gym.Env):
         #Inventory specific
         if "prisoner" in self.name:
             invs = [i["INVENTORY"] for i in timestep.observation]
+            self.total_inv = invs
             self.invs = []
             for i in invs:
                 summa = sum(i)
@@ -135,17 +136,6 @@ class TessEnv(gym.Env):
         if self.counter == 1001:
             done = 1
             self.counter = 1
-
-        """if not np.any(obs[self.random_player]):
-            while not np.any(obs[self.random_player]):
-                self.random_player = random.randint(0,self.num_players-1)
-            self.reset_state = 1"""
-
-        """if self.counter % 200 == 0:
-            self.random_player = random.randint(0,self.num_players-1)
-            while not np.any(obs[self.random_player]):
-                self.random_player = random.randint(0,self.num_players-1)
-            self.reset_state = 1"""
 
         info=dict()
         if done:
@@ -213,15 +203,42 @@ class TessEnv(gym.Env):
         elif "prisoner" in self.name:
 
             if event[0] == "collected_resource":
-                for u in range(self.num_players):
-                    self.rewards[u][0] += .1
+                # event
+                        # ('collected_resource', [b'dict', b'player_index', array(2.), b'class', array(1.)])
+                # for u in range(self.num_players):
+                #     self.rewards[u][0] += 0.1
+                # import pdb;pdb.set_trace()
+                ind = int(event[1][2])-1
+                self.rewards[ind][0] += 0.1
 
             if event[0] == "interaction":
+                # event
+                        # ('interaction', [b'dict', b'row_player_idx', array(2.), b'col_player_idx', array(1.), b'row_reward', array(2.52380952), b'col_reward', array(2.84126984), b'row_inventory', array([7., 2.]), b'col_inventory', array([5., 2.])])
+                # Weiji Xie: I can't determine whether row_player is the player who initiated the interaction or the player who is being interacted with
+                # But here we assume he is.
+                # Our wish:
+                    # if they obtain more than 2 resource, go to interact as fast as possible
+                    # no matter who initiated the interaction, they all should be rewarded
+                    # if they obtain less than 2 resource, go to eat resource first
+                # Hence, reward composition:
+                    # rew_interact = 0.3 + 0.2*(initialize the interaction)
+                    # rew_timing = (f(cur_res)-2)/40, f= min(x**2,8/(sqrt(x))) (max~=5)
+                    # rew_game = row_rew 
+                    # rew_friendly = 0.05*(row_inv+col_inv) 
+                row_ind = int(event[1][2])-1
+                col_ind = int(event[1][4])-1
+                row_inv = event[1][10]
+                col_inv = event[1][12]
                 
-                reward = float(event[1][6])
-                reward2 = float(event[1][8])
-                for u in range(self.num_players):
-                    self.rewards[u][1] += reward + reward2
+                row_rew = float(event[1][6])
+                col_rew = float(event[1][8])
+                # for u in range(self.num_players):
+                #     self.rewards[u][1] += row_rew + col_rew + 0.1
+                rew_timing = lambda x: min(x**2,8/(np.sqrt(x)))
+                scaled_rew_timing = lambda x: (rew_timing(x)-2)/20
+                self.rewards[row_ind][1] += (0.5) + scaled_rew_timing(sum(row_inv)) + row_rew + 0.05*(row_rew+col_rew)
+                self.rewards[col_ind][1] += (0.2) + scaled_rew_timing(sum(col_inv)) + col_rew + 0.05*(row_rew+col_rew)
+                import pdb;pdb.set_trace()
 
         elif "territory" in self.name:
             if event[0] == "claimed_unclaimed_resource":
@@ -242,31 +259,4 @@ class TessEnv(gym.Env):
                 #self.rewards[target_id] -= 1
             
             
-
-
-"""env = gym.make("TessEnv-v1", name="clean_up", render_mode="rgb_array")
-obs = env.reset()
-
-for i in range(10000):
-    action = env.action_space.sample()
-    obs, rew, done, info = env.step(action)
-    frame = env.render() 
-    frame = cv2.resize(frame, (frame.shape[1]*3,frame.shape[0]*3))
-    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-    cv2.imshow("image",frame)
-    cv2.waitKey(200)
-    
-    if done:
-        obs = env.reset()"""
-
-
-"""env = TessEnv("clean_up")
-print(env.action_space)
-print(env.observation_space)
-obs = env.reset()
-action = env.action_space.sample()
-timestep = env.step(action)"""
-
-#print(obs)
-
 

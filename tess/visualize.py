@@ -9,7 +9,6 @@ import numpy as np
 import random
 
 args = argparse.ArgumentParser(description="Visualize Trained Models")
-args.add_argument("--video-dir",type=str)
 args.add_argument("--agent-file",type=str,default="./Tess/saved_models/prisoners_dilemma_in_the_matrix__repeated/prisoners_dilemma_in_the_matrix__repeated-v11-2604-0528-202405.pt")
 args.add_argument("--substrate",type=str,default="clean_up")
 args.add_argument("--env",type=str,default="TessEnv-v4")
@@ -81,8 +80,6 @@ while not done:
         obs = torch.from_numpy(obs).to(args.device).permute((0,3,1,2))
         # obs.shape:  torch.Size([2, 3, 20, 20])
         
-        if "prisoner" in args.substrate:
-            inv = torch.tensor(env.get_attr("invs"), dtype=torch.float32,device="cuda")
             # inv = torch.ones((act_s[0],2), device="cuda", dtype=torch.float32) / 2
             # inv.shape: torch.Size([2, 2])
         if "3" in args.env or "Terr" in args.env:
@@ -94,7 +91,6 @@ while not done:
         # shape: torch.Size([2])
         
         #shoot = torch.zeros(env.num_players,device="cuda",dtype=torch.float32)
-        import pdb;pdb.set_trace()
         if args.bot:
             raise NotImplementedError
             bot_act, (bot_h, bot_c), _ = bots.get_action(obs[:bot_count,:,:,:], shoot=shoot[:bot_count], history=(bot_h,bot_c),\
@@ -105,6 +101,8 @@ while not done:
             act, log_prob, value, (h_0, c_0) = agent.sample_act_and_value(obs, shoot=shoot, history=(h_n, c_n), timestep = time_d, inv=inv, reduce=True)
 
         obs, rew, done, info = env.step(act.cpu().numpy())
+        if "prisoner" in args.substrate:
+            inv = torch.tensor(env.invs, dtype=torch.float32,device="cuda")
 
 images = np.array(images)
 width = images[0].shape[1]
