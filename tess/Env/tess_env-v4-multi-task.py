@@ -260,6 +260,7 @@ class TessEnv(gym.Env):
                 self.rewards[row_ind][1] += (0.5) + scaled_rew_timing(sum(row_inv)) + row_rew + 0.05*(row_rew+col_rew)
                 self.rewards[col_ind][1] += (0.2) + scaled_rew_timing(sum(col_inv)) + col_rew + 0.05*(row_rew+col_rew)
                 
+                self._pd_seeit = [False] * self.num_players
 
         elif "territory" in self.name:
             if event[0] == "claimed_unclaimed_resource":

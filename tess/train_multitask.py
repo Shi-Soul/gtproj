@@ -541,7 +541,14 @@ def main():
 
 if __name__ == "__main__":
     try:
+        start_time = time.time()
+        
         main()
+        
+        end_time = time.time()
+        print("Total Time: ",end_time - start_time)
+        print("Start Time: ",time.strftime("%H:%M:%S",time.localtime(start_time)))
+        print("End Time: ",time.strftime("%H:%M:%S",time.localtime(end_time)))
     except Exception as e:
         print("BUG>>>>  ",e)
         import pdb;pdb.post_mortem()
