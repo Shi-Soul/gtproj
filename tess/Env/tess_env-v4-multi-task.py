@@ -229,8 +229,9 @@ class TessEnv(gym.Env):
                 
                 ind = int(event[1][2])-1
                 inv = self.total_inv[ind]
-                
-                self.rewards[ind][0] += 1*(0.1 + 0.03*(inv[1]+1)/sum(inv+1) + np.tanh(-sum(inv)+3)*0.03)
+                # rew_timing = np.tanh(-sum(inv)+3)
+                rew_timing = 0
+                self.rewards[ind][0] += 1*(0.1 + 0.03*(inv[1]+1)/sum(inv+1) + rew_timing*0.03)
 
             if event[0] == "interaction":
                 # event
@@ -255,9 +256,11 @@ class TessEnv(gym.Env):
                 col_rew = float(event[1][8])
                 # for u in range(self.num_players):
                 #     self.rewards[u][1] += row_rew + col_rew + 0.1
-                rew_timing = lambda x: min(x**2,8/(np.sqrt(x)))
-                scaled_rew_timing = lambda x: (rew_timing(x)-2)/20
-                self.rewards[row_ind][1] += (0.5) + scaled_rew_timing(sum(row_inv)) + row_rew + 0.05*(row_rew+col_rew)
+                # rew_timing = lambda x: min(x**2,8/(np.sqrt(x)))
+                # scaled_rew_timing = lambda x: (rew_timing(x)-2)/20
+                scaled_rew_timing = lambda x: 0
+                prefer_first = 0 # 0.3
+                self.rewards[row_ind][1] += (0.2+prefer_first) + scaled_rew_timing(sum(row_inv)) + row_rew + 0.05*(row_rew+col_rew)
                 self.rewards[col_ind][1] += (0.2) + scaled_rew_timing(sum(col_inv)) + col_rew + 0.05*(row_rew+col_rew)
                 
                 self._pd_seeit = [False] * self.num_players
