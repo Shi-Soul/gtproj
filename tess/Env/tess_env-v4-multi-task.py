@@ -116,7 +116,7 @@ class TessEnv(gym.Env):
                 num_red = (rgb_obs==red).all(axis=2).sum()
                 if num_red>0 and self._pd_seeit[ind]==False:
                     # print("DEBUG: Seeit!",ind,num_red)
-                    self.rewards[ind][1]+=1
+                    # self.rewards[ind][1]+=1
                     self._pd_seeit[ind]=True
             # Set invs
             invs = [i["INVENTORY"] for i in timestep.observation]
