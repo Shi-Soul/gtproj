@@ -7,7 +7,7 @@ import cv2
 import queue
 import random
 
-NUM_CLEANUP_HIS = 10
+NUM_CLEANUP_HIS = 100
 
 class TessEnv(gym.Env):
 
