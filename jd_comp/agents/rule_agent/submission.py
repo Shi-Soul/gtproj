@@ -1,6 +1,7 @@
 import random
 import numpy as np
 from PIL import Image
+import heapq
 
 GLOBAL_MAP = np.array([
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -49,30 +50,46 @@ class Memory:
         self.map_memo = []
         self.local_position = None
         self.local_direction = None
-        self.position_memo = []
+        self.explore_step = None
+        self.position_memo = [] # to remember the last matches for localization
+        self.apath = None # cached path for path planning towards centers
+        self.betray = True
+        self.betray_info = [] # 0 for not betray, 1 for betray
     
+    def betray_update(self): # How to do this?
+        self.betray_info = ...
+        self.betray = True
+        
     def reset(self):
-        self.global_img = 0
         self.map_memo = []
         self.local_position = None
         self.local_direction = None
+        self.explore_step = None
         self.position_memo = []
+        self.apath = None
+        self.betray_update()
 
 memory = Memory()
 
-
+DEBUG = True
 def my_controller(observation, action_space, is_act_continuous=False):
     """
     observation: (['COLLECTIVE_REWARD', 'READY_TO_SHOOT', 'INVENTORY', 'RGB', 'STEP_TYPE', 'REWARD'])
     """
     global memory
-    rgb = observation['RGB']
-    Image.fromarray(rgb).save(f'./img_logs/{memory.global_img}.png')
-    rgb_grid = downsample_image(rgb, 8)
-    # Image.fromarray(rgb_grid).save(f'./img_logs/{memory.global_img}_grid.png')
-    memory.global_img += 1
     
-    if observation['STEP_TYPE'].FIRST == observation['STEP_TYPE']:
+    rgb = observation['RGB']
+    rgb_grid = downsample_image(rgb, 8)
+    
+    if DEBUG:
+        print('REWARD', observation['REWARD'])
+        Image.fromarray(rgb).save('./img_logs/{:06}.png'.format(memory.global_img))
+        # Image.fromarray(rgb_grid).save(f'./img_logs/{memory.global_img}_grid.png')
+        memory.global_img += 1
+    
+    if np.sum(rgb_grid)==0: # the rgb will be all black
+        if DEBUG:
+            print('NEW GAME! Waiting.')
         memory.reset()
     grid_info = convert_grid_to_info(rgb_grid)
     # grid info example: [['EMPTY', 'WALL', 'EMPTY', 'BLUE', 'BLUE'], ['EMPTY', 'WALL', 'EMPTY', 'RED', 'RED'], ['EMPTY', 'EMPTY', 'EMPTY', 'RED', 'RED'], ['EMPTY', 'EMPTY', 'SELF', 'EMPTY', 'EMPTY'], ['EMPTY', 'WALL', 'EMPTY', 'EMPTY', 'WALL']]
@@ -82,10 +99,9 @@ def my_controller(observation, action_space, is_act_continuous=False):
         return localization_phase(grid_info)
     
     # path planning phase, go to the nearest area according to betray policy
-    
-    agent_action = determine_action(grid_info, observation['INVENTORY'])
-    
-    return action_to_one_hot(agent_action)
+    else:
+        return policy_planner(grid_info, observation)
+        # agent_action = determine_action(grid_info, observation['INVENTORY'])
 
 
 ### Code for basic tools
@@ -118,6 +134,7 @@ def downsample_image(image, block_size=8):
     
     return downsampled_image.astype(np.uint8)
 
+
 def convert_grid_to_info(grid):
     info = []
     row, col, _ = grid.shape
@@ -138,6 +155,47 @@ def convert_grid_to_info(grid):
                 row_info.append('OTHER') # Must be another agent
         info.append(row_info)
     return info
+
+
+def scan_grid_info(grid_info):
+    row, col = len(grid_info), len(grid_info[0])
+    scan = []
+    for i in range(row):
+        for j in range(col):
+            scan.append(grid_info[i][j])
+    return list(set(scan))
+
+
+def action2movement(action, direction):
+    # input is text, output is (di, dj)
+    redirect = ['up', 'left', 'down', 'right']
+    if direction == 'left':
+        redirect = ['left', 'down', 'right', 'up']
+    if direction == 'down':
+        redirect = ['down', 'right', 'up', 'left']
+    if direction == 'right':
+        redirect = ['right', 'up', 'left', 'down']
+    act_id = {'FORWARD': redirect[0], 'STEP_LEFT': redirect[1], 'BACKWARD': redirect[2], 'STEP_RIGHT': redirect[3]}
+    return DIRECTIONS[act_id[action]]
+    
+    
+def movement2action(movement, direction):
+    # input is (di, dj), output is text
+    redirect = ['FORWARD', 'STEP_LEFT', 'BACKWARD', 'STEP_RIGHT']
+    if direction == 'left':
+        redirect = ['STEP_RIGHT', 'FORWARD', 'STEP_LEFT', 'BACKWARD']
+    if direction == 'down':
+        redirect = ['BACKWARD', 'STEP_RIGHT', 'FORWARD', 'STEP_LEFT']
+    if direction == 'right':
+        redirect = ['STEP_LEFT', 'BACKWARD', 'STEP_RIGHT', 'FORWARD']
+    move_id = {DIRECTIONS['up']: redirect[0], DIRECTIONS['left']: redirect[1], DIRECTIONS['down']: redirect[2], DIRECTIONS['right']: redirect[3]}
+    return move_id[movement]
+
+
+def heuristic(a, b):
+    # Manhattan distance on a square grid
+    return abs(b[0] - a[0]) + abs(b[1] - a[1])
+
 
 ### Code for phase 1: locolization
 def info2mask(info):
@@ -166,9 +224,11 @@ def find_matches(global_map, local_map, last_matches=None):
                 if np.array_equal(sub_map, rotated_map):
                     center_row_adjust, center_col_adjust = adject[rotation]
                     match = (row + center_row_adjust, col + center_col_adjust)
+                    if min(match) < 3 or match[0] > 15 or match[1] > 23:
+                        continue
                     if last_matches is not None:
                         for last_match in last_matches[rotation]:
-                            if np.sum(np.abs(np.array(match) - np.array(last_match))) == 1:
+                            if heuristic(np.array(match), np.array(last_match)) == 1:
                                 match_list.append(match)
                                 break
                     else:
@@ -176,6 +236,7 @@ def find_matches(global_map, local_map, last_matches=None):
         matches.append(match_list)
 
     return matches # up left down right
+
 
 def locolization(matchs):
     directions = ['up', 'left', 'down', 'right']
@@ -189,7 +250,7 @@ def locolization(matchs):
         if len(matchs[i]) == 1:
             position = matchs[i][0]
             direction = directions[i]
-    return True, position, direction
+    return True, np.array(position), direction
 
 
 def localization_phase(grid_info):
@@ -202,146 +263,169 @@ def localization_phase(grid_info):
     
     # while not is_localized, walk into empty space only
     feasible_empty = [grid_info[2][2]=='EMPTY', grid_info[3][1]=='EMPTY', grid_info[4][2]=='EMPTY', grid_info[3][3]=='EMPTY'] # up left down right
-    id2action = {0: 'FORWARD', 1: 'STEP_LEFT', 2: 'BACKWARD', 3: 'STEP_RIGHT'}
+    id2action = ['FORWARD', 'STEP_LEFT', 'BACKWARD', 'STEP_RIGHT']
     feasible_list = []
     for idx, feasible in enumerate(feasible_empty):
         if feasible:
             feasible_list.append(id2action[idx])
             if not feasible_empty[3-idx]: # opposite direction is also wall
                 feasible_list.append(id2action[idx]) # more willing to keep from the wall
-    action_id = random.choice(feasible_list)
-    return action_to_one_hot(ACTION_TO_IDX[action_id])
+    if memory.explore_step is not None and memory.explore_step in feasible_list:
+        action = memory.explore_step # keep the last step
+    else:
+        action = random.choice(feasible_list)
+        memory.explore_step = action
+    if is_localized:
+        memory.local_position += np.array(action2movement(action, memory.local_direction))
+    return action_to_one_hot(ACTION_TO_IDX[action])
     
 
         
 ### Code for phase 2: path planning
+def nearest_center(card_centers):
+    min_dist = 1000
+    nearest_center = None
+    for center in card_centers:
+        dist = heuristic(memory.local_position, center)
+        if dist < min_dist:
+            min_dist = dist
+            nearest_center = center
+    return nearest_center
 
-def get_neighbours(cell):
-    i, j = cell
-    return [(i + di, j + dj) for di, dj in DIRECTIONS.values() if 0 <= i + di < AGENT_VIEW_SIZE and 0 <= j + dj < AGENT_VIEW_SIZE]
 
-def shortest_path_to_goal(start, goal, walls, bad_cells):
-    visited = set()
-    queue = [(start, [])]
-    while queue:
-        (i, j), path = queue.pop(0)
-        if (i, j) == goal:
-            return path
-        if (i, j) in visited:
-            continue
-        visited.add((i, j))
-        for neighbour in get_neighbours((i, j)):
-            if neighbour not in walls and neighbour not in bad_cells and neighbour not in visited:
-                queue.append((neighbour, path + [neighbour]))
-    return []
+def nearest_card(grid_info, color):
+    card_pos = []
+    arow, acol = memory.local_position
+    row, col = len(grid_info), len(grid_info[0])
+    for i in range(row):
+        for j in range(col):
+            if grid_info[i][j] == color:
+                card_pos.append(memory(i, j))
 
-def get_direction_to_goal(goal, walls, bad_cells):
-    start = (3, 2)
-    path = shortest_path_to_goal(start, goal, walls, bad_cells)
-    if not path:
-        return None
-    next_cell = path[0]
-    for action, (di, dj) in DIRECTIONS.items():
-        if (start[0] + di, start[1] + dj) == next_cell:
-            return action
-    return None
+    near_card = None
+    min_dist = 1000
+    for card in card_pos:
+        dist = heuristic((3, 2), card) # 3, 2 is the agent relative position
+        if dist < min_dist:
+            min_dist = dist
+            near_card = card
+    r_card = np.array(3, 2) - np.array(near_card)
 
-def direction_to_number(direction):
-    mapping = {
-        "up": 1,
-        "down": 2,
-        "left": 3,
-        "right": 4,
-        "same_location": 0
-    }
-    return mapping.get(direction, 0)
-
-def get_nearest(pixel_positions):
-    pixel_positions = [pixel for pixel in pixel_positions if pixel != (3, 2)]
-    if len(pixel_positions) == 0:
-        return None
-    pixels = pixel_positions
-    rows = np.array([pixel[0] for pixel in pixels])
-    cols = np.array([pixel[1] for pixel in pixels])
-    distances = np.sqrt((rows - 3)**2 + (cols - 2)**2)
-    min_index = np.argmin(distances)
-    nearest_pixel = pixels[min_index]
-    return nearest_pixel
-
-def interactable_player_in_zap_range(interactable_players, walls, players, goal_cells):
-    for player in interactable_players:
-        if player == (2, 2):
-            return True
-        if player == (3, 1):
-            return True
-        if player == (3, 3):
-            return True
-        if player == (1, 1) and not (set(walls + players + goal_cells) & set([(3, 1), (2, 1)])):
-            return True
-        if player == (2, 1) and not (set(walls + players + goal_cells) & set([(3, 1)])):
-            return True
-        if player == (1, 3) and not (set(walls + players + goal_cells) & set([(2, 3), (3, 3)])):
-            return True
-        if player == (2, 3) and not (set(walls + players + goal_cells) & set([(3, 3)])):
-            return True
-        if player == (0, 2) and not (set(walls + players + goal_cells) & set([(1, 2), (2, 2)])):
-            return True
-        if player == (1, 2) and not (set(walls + players + goal_cells) & set([(2, 2)])):
-            return True
-
-def determine_action(grid_info, inventory):
-    red_card_cells = []
-    blue_card_cells = []
-    walls = []
-    empty_space = []
-    players = []
-    interactable_players = []
-    noninteractable_players = []
-    for i in range(AGENT_VIEW_SIZE):
-        for j in range(AGENT_VIEW_SIZE):
-            if grid_info[i][j] == 'RED':
-                red_card_cells.append((i, j))
-            elif grid_info[i][j] == 'BLUE':
-                blue_card_cells.append((i, j))
-            elif grid_info[i][j] == 'WALL':
-                walls.append((i, j))
-            elif grid_info[i][j] == 'EMPTY':
-                empty_space.append((i, j))
-            elif grid_info[i][j] == 'SELF':
-                continue
-            else:
-                players.append((i, j))
-                if grid_info[i][j] == 'OTHER':
-                    interactable_players.append((i, j))
-                else:
-                    noninteractable_players.append((i, j))
+    if memory.local_direction == 'left':
+        r_card = np.array([-r_card[1], r_card[0]])
+    elif memory.local_direction == 'down':
+        r_card = np.array([-r_card[0], -r_card[1]])
+    elif memory.local_direction == 'right':
+        r_card = np.array([r_card[1], -r_card[0]])
     
-    if (inventory[0] > 2 or inventory[1] > 2) and interactable_players:
-        nearest_player = get_nearest(interactable_players)
-        if interactable_player_in_zap_range(interactable_players, walls, players, blue_card_cells + red_card_cells):
-            return 7
-        if nearest_player[1] < 2 and nearest_player[0] > 1:
-            return 5
-        if nearest_player[1] > 3 and nearest_player[0] > 1:
-            return 6
-        nearest_player = (nearest_player[0] + 1, nearest_player[1])
-        direction = get_direction_to_goal(nearest_player, walls + noninteractable_players, [])
-        if direction:
-            return direction_to_number(direction)
+    arow, acol = memory.local_position
+    return (arow + r_card[0], acol + r_card[1]) # global position of the card
+    
 
-    if red_card_cells:
-        nearest_goal = get_nearest(red_card_cells)
-        direction = get_direction_to_goal(nearest_goal, walls + players, [])
-        if direction:
-            return direction_to_number(direction)
+def add_card_as_obstacle(grid_info, color): # PROBLEM: checkit
+    card_pos = []
+    color_map = GLOBAL_MAP.copy()
+    arow, acol = memory.local_position
+    row, col = len(grid_info), len(grid_info[0])
+    for i in range(row):
+        for j in range(col):
+            if grid_info[i][j] == color:
+                card_pos.append(memory(i, j))
+    for pos in card_pos:
+        rpos = np.array(3, 2) - np.array(pos)
+        if memory.local_direction == 'left':
+            rpos = np.array([-rpos[1], rpos[0]])
+        elif memory.local_direction == 'down':
+            rpos = np.array([-rpos[0], -rpos[1]])
+        elif memory.local_direction == 'right':
+            rpos = np.array([rpos[1], -rpos[0]])
+        
+        color_map[arow + rpos[0], acol + rpos[1]] = 1
+    return color_map
+    
 
-    if blue_card_cells:
-        nearest_goal = get_nearest(blue_card_cells)
-        direction = get_direction_to_goal(nearest_goal, walls + players, [])
-        if direction:
-            return direction_to_number(direction)
+def policy_planner(grid_info, observation):
+    global memory
+    
+    card_centers = [(6, 10), (6, 16), (12, 10), (12, 16)]
+    if not memory.betray:
+        card_centers = [card_centers[0], card_centers[3]]
+    else:
+        card_centers = [card_centers[1], card_centers[2]]
+    
+    global_center = (9, 13)
+    
+    inventory = observation['INVENTORY']
+    
+    # collection phase
+    if sum(inventory) == 0: # naive. update later
+        desired_color = 'RED' if memory.betray else 'BLUE'
+        another_color = 'BLUE' if memory.betray else 'RED'
+        color_map = add_card_as_obstacle(grid_info, another_color) # ensure not collect blue card
+        if desired_color in scan_grid_info(grid_info):
+            memory.apath = a_star_search(memory.local_position, nearest_card(grid_info, desired_color), grid=color_map)
+        else:
+            memory.apath = a_star_search(memory.local_position, nearest_center(card_centers), grid=color_map)
+    else: # go to center and wait
+        if 'OTHER' in scan_grid_info(grid_info) and observation['READY_TO_SHOOT']:
+            return action_to_one_hot(ACTION_TO_IDX['INTERACT'])
+        memory.apath = a_star_search(memory.local_position, global_center)
+        if len(memory.apath) == 0: # already at the center
+            return action_to_one_hot(ACTION_TO_IDX['INTERACT']) if observation['READY_TO_SHOOT'] else action_to_one_hot(ACTION_TO_IDX['NOOP'])
+        # The policy will fail if the opponent do not come to center
+        
+    next_position = memory.apath.pop(0)
+    agent_action = movement2action(tuple(np.array(next_position) - np.array(memory.local_position)), memory.local_direction)
+    
+    memory.local_position += np.array(action2movement(agent_action, memory.local_direction))
+    return action_to_one_hot(ACTION_TO_IDX[agent_action])
 
-    action = random.choice([1, 1, 1, 5, 6])
-    if action == 1 and grid_info[3][2] == 'WALL':
-        action = random.choice([5, 6])
-    return action
+
+def a_star_search(start, goal, grid=GLOBAL_MAP):
+    start = tuple(start)
+    goal = tuple(goal)
+    
+    neighbors = [(0,1), (1,0), (0,-1), (-1,0)]  # Move right, down, left, up
+    close_set = set()
+    came_from = {}
+    gscore = {start: 0}
+    fscore = {start: heuristic(start, goal)}
+    oheap = []
+
+    heapq.heappush(oheap, (fscore[start], start))
+    
+    while oheap:
+        current = heapq.heappop(oheap)[1]
+
+        if current == goal:
+            data = []
+            while current in came_from:
+                data.append(current)
+                current = came_from[current]
+            return data[::-1]
+
+        close_set.add(current)
+        for i, j in neighbors:
+            neighbor = current[0] + i, current[1] + j            
+            tentative_g_score = gscore[current] + heuristic(current, neighbor)
+            if 0 <= neighbor[0] < grid.shape[0]:
+                if 0 <= neighbor[1] < grid.shape[1]:                
+                    if grid[neighbor[0]][neighbor[1]] == 1:
+                        continue
+                else:
+                    # grid bounds exceeded
+                    continue
+            else:
+                # grid bounds exceeded
+                continue
+
+            if neighbor in close_set and tentative_g_score >= gscore.get(neighbor, 0):
+                continue
+
+            if  tentative_g_score < gscore.get(neighbor, 0) or neighbor not in [i[1]for i in oheap]:
+                came_from[neighbor] = current
+                gscore[neighbor] = tentative_g_score
+                fscore[neighbor] = tentative_g_score + heuristic(neighbor, goal)
+                heapq.heappush(oheap, (fscore[neighbor], neighbor))
+                
+    return False # this should not happen
