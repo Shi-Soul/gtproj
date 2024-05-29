@@ -116,3 +116,5 @@ https://wandb.ai/marshin/Meltingpot/reports/Meltingpot-initial-trials--VmlldzoyN
 https://github.com/google-deepmind/meltingpot/blob/main/examples/rllib/self_play_train.py
 
 https://github.com/utkuearas/MeltingPot-Tess-v1
+
+https://github.com/benjamin-swain/meltingpot-2023-solution

@@ -225,8 +225,6 @@ class TessEnv(gym.Env):
                     # deny is better
                     # don't eat too much, 3 is good
                     
-                    
-                
                 ind = int(event[1][2])-1
                 inv = self.total_inv[ind]
                 # rew_timing = np.tanh(-sum(inv)+3)
@@ -260,8 +258,13 @@ class TessEnv(gym.Env):
                 # scaled_rew_timing = lambda x: (rew_timing(x)-2)/20
                 scaled_rew_timing = lambda x: 0
                 prefer_first = 0 # 0.3
-                self.rewards[row_ind][1] += (0.2+prefer_first) + scaled_rew_timing(sum(row_inv)) + row_rew + 0.05*(row_rew+col_rew)
-                self.rewards[col_ind][1] += (0.2) + scaled_rew_timing(sum(col_inv)) + col_rew + 0.05*(row_rew+col_rew)
+                
+                # Pure Betray
+                self.rewards[row_ind][1] = (row_inv[1]+1)/sum(row_inv+1) + 0.1
+                self.rewards[col_ind][1] = (col_inv[1]+1)/sum(col_inv+1) + 0.1
+                
+                # self.rewards[row_ind][1] += (0.2+prefer_first) + scaled_rew_timing(sum(row_inv)) + row_rew + 0.05*(row_rew+col_rew)
+                # self.rewards[col_ind][1] += (0.2) + scaled_rew_timing(sum(col_inv)) + col_rew + 0.05*(row_rew+col_rew)
                 
                 self._pd_seeit = [False] * self.num_players
 
