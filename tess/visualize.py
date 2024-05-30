@@ -118,6 +118,7 @@ video.release()
 
 # print(np.mean(entropies))
 # print(np.std(entropies))
+print(len(images))
 print(env.real_rewards)
 print(np.mean(env.real_rewards[0]))
 print(np.sum(env.real_rewards))

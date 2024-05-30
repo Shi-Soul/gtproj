@@ -7,7 +7,7 @@ import cv2
 import queue
 import random
 
-NUM_CLEANUP_HIS = 10
+NUM_CLEANUP_HIS = 400
 
 class TessEnv(gym.Env):
 
@@ -166,7 +166,7 @@ class TessEnv(gym.Env):
                 # self.rewards[ind][0] += .1
                 
                 # for ind,history in enumerate(self.clean_up_histories):
-                hist_list = sum(list(self.clean_up_histories[ind].queue)) /0.01 /2
+                hist_list = sum(list(self.clean_up_histories[ind].queue)) /0.01 /5
                 scaled_rew = (np.tanh(NUM_CLEANUP_HIS-  hist_list)+1)/2
                 self.rewards[ind][0] += scaled_rew*0.1
                     # The more you clean, the less rewards you get when you clean
@@ -177,7 +177,7 @@ class TessEnv(gym.Env):
                 # if you are hardworking, you get a little more rewards when **someone** eat
                 for ind,history in enumerate(self.clean_up_histories):
                     hist_list = sum(list(history.queue)) 
-                    self.rewards[ind][0] += hist_list 
+                    self.rewards[ind][0] += hist_list*0.01
                 self.rewards[theind][1] += .1
                 self.real_rewards[theind] += 1
 

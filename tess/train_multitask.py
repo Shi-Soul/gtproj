@@ -132,7 +132,8 @@ def main():
     if not args.debug:
         import wandb
         wandb.login()
-        run = wandb.init(project="Tess",name=f"{args.substrate}-{EXPNAME}-{num_envs}-{num_steps}-{config.minibatch}-{lr}-{clip_coef}-{ent_coef}-{epoch}")
+        run = wandb.init(project="Tess",name=f"{args.substrate}-{EXPNAME}-{num_envs}-{num_steps}-{config.minibatch}-{lr}-{clip_coef}-{ent_coef}-{epoch}",
+                         settings=wandb.Settings(code_dir="."))
 
     #Setting Up Optimizer
     if config.optimizer == "rmsprop":
