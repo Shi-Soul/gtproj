@@ -7,7 +7,7 @@ import cv2
 import queue
 import random
 
-NUM_CLEANUP_HIS = 10
+NUM_CLEANUP_HIS = 100
 
 class TessEnv(gym.Env):
 
@@ -116,7 +116,7 @@ class TessEnv(gym.Env):
                 num_red = (rgb_obs==red).all(axis=2).sum()
                 if num_red>0 and self._pd_seeit[ind]==False:
                     # print("DEBUG: Seeit!",ind,num_red)
-                    self.rewards[ind][1]+=1
+                    # self.rewards[ind][1]+=1
                     self._pd_seeit[ind]=True
             # Set invs
             invs = [i["INVENTORY"] for i in timestep.observation]
@@ -166,7 +166,7 @@ class TessEnv(gym.Env):
                 # self.rewards[ind][0] += .1
                 
                 # for ind,history in enumerate(self.clean_up_histories):
-                hist_list = sum(list(self.clean_up_histories[ind].queue)) /0.01 /2
+                hist_list = sum(list(self.clean_up_histories[ind].queue)) /0.01
                 scaled_rew = (np.tanh(NUM_CLEANUP_HIS-  hist_list)+1)/2
                 self.rewards[ind][0] += scaled_rew*0.1
                     # The more you clean, the less rewards you get when you clean
@@ -177,7 +177,7 @@ class TessEnv(gym.Env):
                 # if you are hardworking, you get a little more rewards when **someone** eat
                 for ind,history in enumerate(self.clean_up_histories):
                     hist_list = sum(list(history.queue)) 
-                    self.rewards[ind][0] += hist_list 
+                    self.rewards[ind][0] += hist_list*0.01
                 self.rewards[theind][1] += .1
                 self.real_rewards[theind] += 1
 
@@ -229,7 +229,7 @@ class TessEnv(gym.Env):
                 inv = self.total_inv[ind]
                 # rew_timing = np.tanh(-sum(inv)+3)
                 rew_timing = 0
-                self.rewards[ind][0] += 1*(0.1 + 0.03*(inv[1]+1)/sum(inv+1) + rew_timing*0.03)
+                self.rewards[ind][0] += 1*(0.1 + 0.03*(inv[1]+1)/(sum(inv)+1) + rew_timing*0.03)
 
             if event[0] == "interaction":
                 # event
@@ -260,8 +260,8 @@ class TessEnv(gym.Env):
                 prefer_first = 0 # 0.3
                 
                 # Pure Betray
-                self.rewards[row_ind][1] = (row_inv[1]+1)/sum(row_inv+1) + 0.1
-                self.rewards[col_ind][1] = (col_inv[1]+1)/sum(col_inv+1) + 0.1
+                self.rewards[row_ind][1] = (row_inv[1]+1)/(sum(row_inv)+1) + 0.1
+                self.rewards[col_ind][1] = (col_inv[1]+1)/(sum(col_inv)+1) + 0.1
                 
                 # self.rewards[row_ind][1] += (0.2+prefer_first) + scaled_rew_timing(sum(row_inv)) + row_rew + 0.05*(row_rew+col_rew)
                 # self.rewards[col_ind][1] += (0.2) + scaled_rew_timing(sum(col_inv)) + col_rew + 0.05*(row_rew+col_rew)
