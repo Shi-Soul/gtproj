@@ -2,6 +2,9 @@ import random
 import numpy as np
 from PIL import Image
 import heapq
+from scipy.stats import norm
+
+
 
 GLOBAL_MAP = np.array([
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -43,6 +46,57 @@ NAMED_ITEMS_IDX = {name: i for i, name in enumerate(NAMED_ITEMS)}
 ACTIONS = ['NOOP', 'FORWARD', 'BACKWARD', 'STEP_LEFT', 'STEP_RIGHT', 'TURN_LEFT', 'TURN_RIGHT', 'INTERACT']
 ACTION_TO_IDX = {action: i for i, action in enumerate(ACTIONS)}
 
+
+# functions for update global info
+def oppo_coor(coor, rw):
+    # coor:(0, 1) my coor prob; rw: reward
+    # return opponent coor prob
+    return (rw+coor-1)/(4-coor)
+
+
+def fit_gaussian(data):
+    wdata=[] # weighted data
+    for t, d in enumerate(data):
+        wdata.extend([d]*np.floor(100/(len(data)-t)).astype(int))
+    mean, std_dev = norm.fit(wdata)
+    return mean, std_dev
+
+
+def sample_gaussian(mean, std_dev, num_samples):
+    samples = np.random.normal(mean, std_dev, num_samples)
+    return samples
+
+
+def get_policy(coor):
+    if coor < 1/7:
+        target = (1, 6)
+    elif coor < 1/6:
+        target = (1, 5)
+    elif coor < 1/5:
+        target = (1, 4)
+    elif coor < 1/4:
+        target = (1, 3)
+    elif coor < 1/3:
+        target = (1, 2)
+    elif coor < 2/5:
+        target = (2, 3)
+    elif coor < 1/2:
+        target = (2, 2)
+    elif coor < 3/5:
+        target = (3, 2)
+    elif coor < 2/3:
+        target = (2, 1)
+    elif coor < 3/4:
+        target = (3, 1)
+    elif coor < 4/5:
+        target = (4, 1)
+    elif coor < 5/6:
+        target = (5, 1)
+    elif coor < 6/7:
+        target = (6, 1)
+    return np.array(target)
+
+
 # changable global variable
 class Memory:
     def __init__(self):
@@ -54,11 +108,37 @@ class Memory:
         self.position_memo = [] # to remember the last matches for localization
         self.apath = None # cached path for path planning towards centers
         self.betray = True
-        self.betray_info = [] # 0 for not betray, 1 for betray
+        self.collect_target = np.array([2, 1])
+        self.collect_priority = None
+        self.inventory = None
+        self.oppo_info = [] # opponent info, coor prob
     
-    def betray_update(self): # How to do this?
-        self.betray_info = ...
-        self.betray = True
+    def update_collect(self):
+        diff = self.collect_target - self.inventory if self.inventory is not None else np.array([1, 1])
+        if sum(diff) == 0:
+            return None
+        if self.collect_priority is None:
+            self.collect_priority = 'RED' if diff[0] >= diff[1] else 'BLUE'
+        elif self.collect_priority == 'RED':
+            self.collect_priority = 'RED' if diff[1] > 0 else 'BLUE'
+        elif self.collect_priority == 'BLUE':
+            self.collect_priority = 'BLUE' if diff[0] > 0 else 'RED'
+        return self.collect_priority
+    
+    def policy_update(self, rw):
+        if rw == 0:
+            return # waiting for game
+        self_coor = self.inventory[0] / sum(self.inventory)
+        oppo_coor_prob = oppo_coor(self_coor, rw)
+        self.oppo_info.append(oppo_coor_prob)
+        mean, dev = fit_gaussian(self.oppo_info)
+        estm_oppo = sample_gaussian(mean, dev/2, 1)
+        best_coor = estm_oppo - dev * 2 
+        # this is because the dev of [0.1, 0.9] is 0.38 here. 
+        # For a random-like opponent, we want to always betray, that is: mean:0.5+0.38*2 -> 1
+        # For a fixed oppenent, the best is to betray. I have no good plan for that, but at least we betray to betrayers.
+        # For a one-time cooperator, this policy tries to copy the opponent's behavior
+        self.collect_target = get_policy(best_coor)
         
     def reset(self):
         self.map_memo = []
@@ -67,23 +147,30 @@ class Memory:
         self.explore_step = None
         self.position_memo = []
         self.apath = None
-        self.betray_update()
+        self.collect_priority = None
+
 
 memory = Memory()
+DEBUG = False
 
-DEBUG = True
+
 def my_controller(observation, action_space, is_act_continuous=False):
     """
     observation: (['COLLECTIVE_REWARD', 'READY_TO_SHOOT', 'INVENTORY', 'RGB', 'STEP_TYPE', 'REWARD'])
     """
     global memory
     
+    if DEBUG:
+        print('INVENTORY', memory.inventory)
+    memory.inventory = observation['INVENTORY']
     rgb = observation['RGB']
     rgb_grid = downsample_image(rgb, 8)
     
     if DEBUG:
         print('REWARD', observation['REWARD'])
+        print('POSITION', memory.local_position)
         Image.fromarray(rgb).save('./img_logs/{:06}.png'.format(memory.global_img))
+        Image.fromarray(rgb).save('./img_logs/current.png'.format(memory.global_img))
         # Image.fromarray(rgb_grid).save(f'./img_logs/{memory.global_img}_grid.png')
         memory.global_img += 1
     
@@ -91,17 +178,25 @@ def my_controller(observation, action_space, is_act_continuous=False):
         if DEBUG:
             print('NEW GAME! Waiting.')
         memory.reset()
+        memory.policy_update(observation['REWARD'])
+        return action_to_one_hot(ACTION_TO_IDX['NOOP'])
+        
     grid_info = convert_grid_to_info(rgb_grid)
     # grid info example: [['EMPTY', 'WALL', 'EMPTY', 'BLUE', 'BLUE'], ['EMPTY', 'WALL', 'EMPTY', 'RED', 'RED'], ['EMPTY', 'EMPTY', 'EMPTY', 'RED', 'RED'], ['EMPTY', 'EMPTY', 'SELF', 'EMPTY', 'EMPTY'], ['EMPTY', 'WALL', 'EMPTY', 'EMPTY', 'WALL']]
     
-    # localization phase
-    if memory.local_position is None:
-        return localization_phase(grid_info)
-    
-    # path planning phase, go to the nearest area according to betray policy
-    else:
-        return policy_planner(grid_info, observation)
-        # agent_action = determine_action(grid_info, observation['INVENTORY'])
+    try:
+        # localization phase
+        if memory.local_position is None:
+            return localization_phase(grid_info)
+        
+        # path planning phase, go to the nearest area according to betray policy
+        else:
+            return policy_planner(grid_info, observation)
+        
+    except Exception as e:
+        if DEBUG:
+            print('ERROR!', e)
+        return action_to_one_hot(ACTION_TO_IDX['NOOP']) # been shot. wait for the next game
 
 
 ### Code for basic tools
@@ -164,6 +259,18 @@ def scan_grid_info(grid_info):
         for j in range(col):
             scan.append(grid_info[i][j])
     return list(set(scan))
+
+
+def can_hit(grid_info):
+    for i in range(1, 5):
+        for j in range(1, 4):
+            if grid_info[i][j] == 'OTHER':
+                return True
+    return False
+
+
+def other_in_back(grid_info):
+    return 'OTHER' in grid_info[-1]
 
 
 def action2movement(action, direction):
@@ -250,6 +357,8 @@ def locolization(matchs):
         if len(matchs[i]) == 1:
             position = matchs[i][0]
             direction = directions[i]
+    if DEBUG:
+        print('Localized at', position, 'at frame', len(memory.position_memo)-1)
     return True, np.array(position), direction
 
 
@@ -269,17 +378,18 @@ def localization_phase(grid_info):
         if feasible:
             feasible_list.append(id2action[idx])
             if not feasible_empty[3-idx]: # opposite direction is also wall
-                feasible_list.append(id2action[idx]) # more willing to keep from the wall
+                for _ in range(2):
+                    feasible_list.append(id2action[idx]) # more willing to keep from the wall
     if memory.explore_step is not None and memory.explore_step in feasible_list:
-        action = memory.explore_step # keep the last step
-    else:
-        action = random.choice(feasible_list)
-        memory.explore_step = action
+        for _ in range(3):
+            feasible_list.append(memory.explore_step)
+        
+    action = random.choice(feasible_list)
+    memory.explore_step = action
     if is_localized:
         memory.local_position += np.array(action2movement(action, memory.local_direction))
     return action_to_one_hot(ACTION_TO_IDX[action])
     
-
         
 ### Code for phase 2: path planning
 def nearest_center(card_centers):
@@ -300,7 +410,7 @@ def nearest_card(grid_info, color):
     for i in range(row):
         for j in range(col):
             if grid_info[i][j] == color:
-                card_pos.append(memory(i, j))
+                card_pos.append((i, j))
 
     near_card = None
     min_dist = 1000
@@ -309,7 +419,7 @@ def nearest_card(grid_info, color):
         if dist < min_dist:
             min_dist = dist
             near_card = card
-    r_card = np.array(3, 2) - np.array(near_card)
+    r_card = np.array(near_card) - np.array((3, 2))
 
     if memory.local_direction == 'left':
         r_card = np.array([-r_card[1], r_card[0]])
@@ -322,17 +432,19 @@ def nearest_card(grid_info, color):
     return (arow + r_card[0], acol + r_card[1]) # global position of the card
     
 
-def add_card_as_obstacle(grid_info, color): # PROBLEM: checkit
+def add_card_as_obstacle(grid_info, color):
+    if type(color) == str:
+        color = [color]
     card_pos = []
     color_map = GLOBAL_MAP.copy()
     arow, acol = memory.local_position
     row, col = len(grid_info), len(grid_info[0])
     for i in range(row):
         for j in range(col):
-            if grid_info[i][j] == color:
-                card_pos.append(memory(i, j))
+            if grid_info[i][j] in color:
+                card_pos.append((i, j))
     for pos in card_pos:
-        rpos = np.array(3, 2) - np.array(pos)
+        rpos = np.array(pos) - np.array((3, 2))
         if memory.local_direction == 'left':
             rpos = np.array([-rpos[1], rpos[0]])
         elif memory.local_direction == 'down':
@@ -347,31 +459,41 @@ def add_card_as_obstacle(grid_info, color): # PROBLEM: checkit
 def policy_planner(grid_info, observation):
     global memory
     
-    card_centers = [(6, 10), (6, 16), (12, 10), (12, 16)]
-    if not memory.betray:
-        card_centers = [card_centers[0], card_centers[3]]
-    else:
-        card_centers = [card_centers[1], card_centers[2]]
+    target_priority = memory.update_collect()
     
-    global_center = (9, 13)
-    
-    inventory = observation['INVENTORY']
-    
-    # collection phase
-    if sum(inventory) == 0: # naive. update later
-        desired_color = 'RED' if memory.betray else 'BLUE'
-        another_color = 'BLUE' if memory.betray else 'RED'
+        # collection phase
+    if target_priority is not None: # naive. update later
+        
+        card_centers = [(6, 10), (6, 16), (12, 10), (12, 16)]
+        if target_priority == 'BLUE':
+            card_centers = [card_centers[0], card_centers[3]] # more blue here
+        else:
+            card_centers = [card_centers[1], card_centers[2]] # more red here
+            
+        desired_color = target_priority
+        another_color = 'BLUE' if target_priority=='RED' else 'RED'
         color_map = add_card_as_obstacle(grid_info, another_color) # ensure not collect blue card
-        if desired_color in scan_grid_info(grid_info):
+        if desired_color in scan_grid_info(grid_info): # if at RED center, we can still collect BLUE card if available
+            if DEBUG:
+                print('Collecting', desired_color)
             memory.apath = a_star_search(memory.local_position, nearest_card(grid_info, desired_color), grid=color_map)
         else:
             memory.apath = a_star_search(memory.local_position, nearest_center(card_centers), grid=color_map)
     else: # go to center and wait
-        if 'OTHER' in scan_grid_info(grid_info) and observation['READY_TO_SHOOT']:
+        color_map = add_card_as_obstacle(grid_info, ['RED', 'BLUE']) # ensure not collect card
+        if can_hit(grid_info) and observation['READY_TO_SHOOT']:
             return action_to_one_hot(ACTION_TO_IDX['INTERACT'])
-        memory.apath = a_star_search(memory.local_position, global_center)
-        if len(memory.apath) == 0: # already at the center
-            return action_to_one_hot(ACTION_TO_IDX['INTERACT']) if observation['READY_TO_SHOOT'] else action_to_one_hot(ACTION_TO_IDX['NOOP'])
+        elif 'OTHER' in scan_grid_info(grid_info): # go to
+            if other_in_back(grid_info):
+                next_direction = {'up': 'left', 'left': 'down', 'down': 'right', 'right': 'up'}
+                memory.local_direction = next_direction[memory.local_direction]
+                return action_to_one_hot(ACTION_TO_IDX['TURN_LEFT'])
+            memory.apath = a_star_search(memory.local_position, nearest_card(grid_info, 'OTHER'), grid=color_map)
+        else:
+            global_center = (9, 13)
+            memory.apath = a_star_search(memory.local_position, global_center, color_map)
+            if len(memory.apath) == 0: # already at the center
+                return action_to_one_hot(ACTION_TO_IDX['INTERACT']) if observation['READY_TO_SHOOT'] else action_to_one_hot(ACTION_TO_IDX['TURN_LEFT'])
         # The policy will fail if the opponent do not come to center
         
     next_position = memory.apath.pop(0)
