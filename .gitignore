@@ -36,3 +36,7 @@ results/
 *.avi
 */wandb
 */Tess/saved_models
+
+img_logs
+jd_comp/agents/rule_agent/wkl_playground.ipynb
+.vscode
