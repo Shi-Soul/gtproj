@@ -229,7 +229,7 @@ class TessEnv(gym.Env):
                 inv = self.total_inv[ind]
                 # rew_timing = np.tanh(-sum(inv)+3)
                 rew_timing = 0
-                self.rewards[ind][0] += 1*(0.1 + 0.03*(inv[1]+1)/(sum(inv)+1) + rew_timing*0.03)
+                self.rewards[ind][0] += 1*(0.1*(inv[1]+1)/(sum(inv)+1) + rew_timing*0.03)
 
             if event[0] == "interaction":
                 # event

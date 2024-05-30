@@ -132,7 +132,9 @@ def main():
     if not args.debug:
         import wandb
         wandb.login()
-        run = wandb.init(project="Tess",name=f"{args.substrate}-{EXPNAME}-{num_envs}-{num_steps}-{config.minibatch}-{lr}-{clip_coef}-{ent_coef}-{epoch}",
+        run = wandb.init(project="Tess",
+                         name=f"{args.substrate}-{EXPNAME}-{num_envs}-{num_steps}-{config.minibatch}-{lr}-{clip_coef}-{ent_coef}-{epoch}",
+                         save_code=True,
                          settings=wandb.Settings(code_dir="."))
 
     #Setting Up Optimizer
@@ -325,7 +327,7 @@ def main():
                 .to("cuda")
             
             if save:
-                saved_name = f"./Tess/saved_models/{args.substrate}/{args.substrate}-v11-{run_idx}.pt"
+                saved_name = f"./Tess/saved_models/{args.substrate}/{args.substrate}-{EXPNAME}-v11-{run_idx}.pt"
                 print(f"\nSave at: Update={update},\tStep={step},\tRew={mean_real},\tPath={saved_name}")
                 try:
                     os.makedirs(f"./Tess/saved_models/{args.substrate}/",exist_ok=True)
@@ -534,7 +536,7 @@ def main():
         os.makedirs(f"./Tess/saved_models/{args.substrate}/",exist_ok=True)
     except:
         pass
-    torch.save(agent.state_dict(),f"./Tess/saved_models/{args.substrate}/{args.substrate}-last_output-{run_idx}.pt")
+    torch.save(agent.state_dict(),f"./Tess/saved_models/{args.substrate}/{args.substrate}-{EXPNAME}-last_output-{run_idx}.pt")
 
 
 
