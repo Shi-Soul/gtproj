@@ -112,17 +112,27 @@ class Memory:
         self.collect_priority = None
         self.inventory = None
         self.oppo_info = [] # opponent info, coor prob
+        self.memory_map = GLOBAL_MAP
     
     def update_collect(self):
         diff = self.collect_target - self.inventory if self.inventory is not None else np.array([1, 1])
         if sum(diff) == 0:
             return None
         if self.collect_priority is None:
+            memory.memory_map = GLOBAL_MAP
             self.collect_priority = 'RED' if diff[0] >= diff[1] else 'BLUE'
         elif self.collect_priority == 'RED':
-            self.collect_priority = 'RED' if diff[1] > 0 else 'BLUE'
+            if diff[1] > 0:
+                self.collect_priority = 'RED'
+            else:
+                memory.memory_map = GLOBAL_MAP
+                self.collect_priority = 'BLUE'
         elif self.collect_priority == 'BLUE':
-            self.collect_priority = 'BLUE' if diff[0] > 0 else 'RED'
+            if diff[0] > 0:
+                self.collect_priority = 'BLUE'
+            else:
+                memory.memory_map = GLOBAL_MAP
+                self.collect_priority = 'RED'
         return self.collect_priority
     
     def policy_update(self, rw):
@@ -148,10 +158,11 @@ class Memory:
         self.position_memo = []
         self.apath = None
         self.collect_priority = None
+        self.memory_map = GLOBAL_MAP
 
 
 memory = Memory()
-DEBUG = False
+DEBUG = True
 
 
 def my_controller(observation, action_space, is_act_continuous=False):
@@ -269,8 +280,8 @@ def can_hit(grid_info):
     return False
 
 
-def other_in_back(grid_info):
-    return 'OTHER' in grid_info[-1]
+def in_back(grid_info, target):
+    return target in grid_info[-1]
 
 
 def action2movement(action, direction):
@@ -436,7 +447,7 @@ def add_card_as_obstacle(grid_info, color):
     if type(color) == str:
         color = [color]
     card_pos = []
-    color_map = GLOBAL_MAP.copy()
+    color_map = memory.memory_map.copy()
     arow, acol = memory.local_position
     row, col = len(grid_info), len(grid_info[0])
     for i in range(row):
@@ -472,26 +483,26 @@ def policy_planner(grid_info, observation):
             
         desired_color = target_priority
         another_color = 'BLUE' if target_priority=='RED' else 'RED'
-        color_map = add_card_as_obstacle(grid_info, another_color) # ensure not collect blue card
+        memory.memory_map = add_card_as_obstacle(grid_info, another_color) # ensure not collect blue card
         if desired_color in scan_grid_info(grid_info): # if at RED center, we can still collect BLUE card if available
             if DEBUG:
                 print('Collecting', desired_color)
-            memory.apath = a_star_search(memory.local_position, nearest_card(grid_info, desired_color), grid=color_map)
+            memory.apath = a_star_search(memory.local_position, nearest_card(grid_info, desired_color), grid=memory.memory_map)
         else:
-            memory.apath = a_star_search(memory.local_position, nearest_center(card_centers), grid=color_map)
+            memory.apath = a_star_search(memory.local_position, nearest_center(card_centers), grid=memory.memory_map)
     else: # go to center and wait
-        color_map = add_card_as_obstacle(grid_info, ['RED', 'BLUE']) # ensure not collect card
+        memory.memory_map = add_card_as_obstacle(grid_info, ['RED', 'BLUE']) # ensure not collect card
         if can_hit(grid_info) and observation['READY_TO_SHOOT']:
             return action_to_one_hot(ACTION_TO_IDX['INTERACT'])
         elif 'OTHER' in scan_grid_info(grid_info): # go to
-            if other_in_back(grid_info):
+            if in_back(grid_info, 'OTHER'):
                 next_direction = {'up': 'left', 'left': 'down', 'down': 'right', 'right': 'up'}
                 memory.local_direction = next_direction[memory.local_direction]
                 return action_to_one_hot(ACTION_TO_IDX['TURN_LEFT'])
-            memory.apath = a_star_search(memory.local_position, nearest_card(grid_info, 'OTHER'), grid=color_map)
+            memory.apath = a_star_search(memory.local_position, nearest_card(grid_info, 'OTHER'), grid=memory.memory_map)
         else:
             global_center = (9, 13)
-            memory.apath = a_star_search(memory.local_position, global_center, color_map)
+            memory.apath = a_star_search(memory.local_position, global_center, memory.memory_map)
             if len(memory.apath) == 0: # already at the center
                 return action_to_one_hot(ACTION_TO_IDX['INTERACT']) if observation['READY_TO_SHOOT'] else action_to_one_hot(ACTION_TO_IDX['TURN_LEFT'])
         # The policy will fail if the opponent do not come to center
