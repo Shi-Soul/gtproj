@@ -31,6 +31,7 @@ RED_CARD_COLOR = (128, 33, 53)
 BLUE_CARD_COLOR = (33, 128, 109)
 EMPTY_SPACE = (0, 0, 0)
 WALL = (114, 114, 114)
+LASER = (252, 252, 106)
 AGENT_VIEW_SIZE = 5
 AGENT_SELF = (20, 40, 81)
 AGENT_OTHER = (80, 45, 27)
@@ -103,7 +104,7 @@ def get_policy(coor):
 # changable global variable
 class Memory:
     def __init__(self):
-        self.global_img = 0
+        self.time_cnt = 0
         self.local_position = None
         self.local_direction = None
         self.last_move = None # last action
@@ -116,12 +117,16 @@ class Memory:
         self.oppo_info = [] # opponent info, coor prob
         self.memory_map = GLOBAL_MAP
         self.last_observation = None
+        self.lasered = False
     
     def update_collect(self):
         diff = self.collect_target - self.inventory if self.inventory is not None else np.array([1, 1])
         if sum(diff) == 0:
+            if self.collect_priority is not None:
+                self.memory_map = GLOBAL_MAP
+            self.collect_priority = None
             return None
-        if self.collect_priority is None:
+        elif self.collect_priority is None:
             memory.memory_map = GLOBAL_MAP
             self.collect_priority = 'RED' if diff[0] >= diff[1] else 'BLUE'
         elif self.collect_priority == 'RED':
@@ -158,15 +163,16 @@ class Memory:
     def reset(self):
         self.local_position = None
         self.local_direction = None
-        self.last_move = None
+        self.last_move = ''
         self.position_memo = []
         self.apath = None
         self.collect_priority = None
         self.memory_map = GLOBAL_MAP
+        self.lasered = False
 
 
 memory = Memory()
-DEBUG = False
+DEBUG = 1
 if DEBUG:
     from PIL import Image
 
@@ -177,8 +183,6 @@ def my_controller(observation, action_space, is_act_continuous=False):
     """
     global memory, gt_time
     
-    if DEBUG:
-        print('INVENTORY', memory.inventory)
     memory.inventory = observation['INVENTORY']
     if sum(memory.inventory) > 2:
         memory.valid_inventory = memory.inventory
@@ -186,18 +190,17 @@ def my_controller(observation, action_space, is_act_continuous=False):
     rgb_grid = downsample_image(rgb, 8)
     grid_info = convert_grid_to_info(rgb_grid)
     memory.last_observation = grid_info
+    memory.time_cnt += 1
     
     if DEBUG:
-        print('REWARD', observation['REWARD'])
-        print('POSITION', memory.local_position)
-        Image.fromarray(rgb).save('./img_logs/{:06}.png'.format(memory.global_img))
-        Image.fromarray(rgb).save('./img_logs/current.png'.format(memory.global_img))
-        # Image.fromarray(rgb_grid).save(f'./img_logs/{memory.global_img}_grid.png')
-        memory.global_img += 1
+        Image.fromarray(rgb).save('./img_logs/{:06}.png'.format(memory.time_cnt))
+        Image.fromarray(rgb).save('./img_logs/current.png'.format(memory.time_cnt))
+        # Image.fromarray(rgb_grid).save(f'./img_logs/{memory.time_cnt}_grid.png')
     
     # detect new game or new scenario
     if observation['REWARD']>0: # the rgb will be all black
         if DEBUG:
+            print('REWARD', observation['REWARD'])
             print('NEW GAME! Reset.')
         memory.reset()
         memory.policy_update(observation['REWARD'])
@@ -206,17 +209,22 @@ def my_controller(observation, action_space, is_act_continuous=False):
     elif np.sum(rgb_grid)==0:
         if DEBUG:
             print('NEW GAME! Reset.')
+        memory.reset()
         return action_to_one_hot(ACTION_TO_IDX['NOOP'])
         
     # detect if move falure
-    if check_move_failure(grid_info):
+    if memory.lasered and check_move_failure(grid_info):
         if DEBUG:
             print('MOVE FAILURE!')
+        memory.last_move = ''
         return action_to_one_hot(ACTION_TO_IDX['NOOP'])
             
     if not check_location_correct(grid_info, memory.local_position, memory.local_direction): # a new scenario starts
         if DEBUG:
-            print('NEW SCENARIO or Crashed! Clean Cache.')
+            print('Crashed!')
+        memory.local_position = None
+        
+    if memory.time_cnt > 500:
         memory = Memory()
         
     # grid info example: [['EMPTY', 'WALL', 'EMPTY', 'BLUE', 'BLUE'], ['EMPTY', 'WALL', 'EMPTY', 'RED', 'RED'], ['EMPTY', 'EMPTY', 'EMPTY', 'RED', 'RED'], ['EMPTY', 'EMPTY', 'SELF', 'EMPTY', 'EMPTY'], ['EMPTY', 'WALL', 'EMPTY', 'EMPTY', 'WALL']]
@@ -234,7 +242,12 @@ def my_controller(observation, action_space, is_act_continuous=False):
         # This usually happens when the agent is shot. We act but not move, thus get wrong localization
         if DEBUG:
             print('ERROR!', e)
-        return action_to_one_hot(ACTION_TO_IDX['NOOP'])
+        try:
+            action = feasible_explore(grid_info, memory.local_position is not None)  
+            memory.last_move = action
+            return action_to_one_hot(ACTION_TO_IDX[action])
+        except:
+            return action_to_one_hot(ACTION_TO_IDX['NOOP'])
 
 
 ### Code for basic tools
@@ -265,6 +278,8 @@ def downsample_image(image, block_size=8):
 
 def convert_grid_to_info(grid):
     '''Input is downsampled image, output is grid info: list[list[str]]'''
+    global memory
+    
     info = []
     row, col, _ = grid.shape
     for i in range(row):
@@ -279,6 +294,9 @@ def convert_grid_to_info(grid):
             elif np.array_equal(grid[i, j], WALL):
                 row_info.append('WALL')
             elif np.array_equal(grid[i, j], EMPTY_SPACE):
+                row_info.append('EMPTY')
+            elif np.array_equal(grid[i, j], LASER):
+                memory.lasered = True
                 row_info.append('EMPTY')
             else:
                 row_info.append('OTHER') # Must be another agent
@@ -404,7 +422,7 @@ def check_move_failure(grid_info):
         pos, direction = memory.local_position - np.array(action2movement(last_action, memory.local_direction)), memory.local_direction
     else:
         return False
-    failure =  check_location_correct(grid_info, pos, direction)
+    failure = check_location_correct(grid_info, pos, direction)
     if failure:
         memory.local_position, memory.local_direction = pos, direction
     return failure
@@ -468,15 +486,9 @@ def locolization(matchs):
     return True, np.array(position) if position is not None else None, direction
 
 
-def localization_phase(grid_info):
-    '''Localization phase, tend to walk from walls for quicker localization.'''
+def feasible_explore(grid_info, is_localized=True):
+    '''Explore phase, tend to walk from walls for quicker localization.'''
     global memory
-    matches = find_matches(GLOBAL_MAP, grid_info, None if len(memory.position_memo) == 0 else memory.position_memo[-1])
-    memory.position_memo.append(matches)
-    is_localized, local_position, direction = locolization(matches)
-    if is_localized:
-        memory.local_position, memory.local_direction = local_position, direction
-    
     # while not is_localized, walk into empty space only
     feasible_empty = [grid_info[2][2]=='EMPTY', grid_info[3][1]=='EMPTY', grid_info[4][2]=='EMPTY', grid_info[3][3]=='EMPTY'] # up left down right
     id2action = ['FORWARD', 'STEP_LEFT', 'BACKWARD', 'STEP_RIGHT']
@@ -492,9 +504,22 @@ def localization_phase(grid_info):
             feasible_list.append(memory.last_move)
         
     action = random.choice(feasible_list)
-    memory.last_move = action
     if is_localized:
         memory.local_position += np.array(action2movement(action, memory.local_direction))
+    return action
+
+
+def localization_phase(grid_info):
+    '''Localization phase, tend to walk from walls for quicker localization.'''
+    global memory
+    matches = find_matches(GLOBAL_MAP, grid_info, None if len(memory.position_memo) == 0 else memory.position_memo[-1])
+    memory.position_memo.append(matches)
+    is_localized, local_position, direction = locolization(matches)
+    if is_localized:
+        memory.local_position, memory.local_direction = local_position, direction
+    
+    action = feasible_explore(grid_info, is_localized)
+    memory.last_move = action
     return action_to_one_hot(ACTION_TO_IDX[action])
     
         
@@ -573,7 +598,7 @@ def path_planning_phase(grid_info, observation):
     target_priority = memory.update_collect()
     
         # collection phase
-    if target_priority is not None: # naive. update later
+    if target_priority is not None:
         
         card_centers = [(6, 10), (6, 16), (12, 10), (12, 16)]
         if target_priority == 'BLUE':
@@ -605,16 +630,18 @@ def path_planning_phase(grid_info, observation):
         else:
             global_center = (9, 13)
             memory.apath = a_star_search(memory.local_position, global_center, memory.memory_map)
-            if len(memory.apath) == 0: # already at the center
-                memory.last_move = ''
-                return action_to_one_hot(ACTION_TO_IDX['INTERACT'])
         # The policy will fail if the opponent do not come to center
         
-    next_position = memory.apath.pop(0)
-    agent_action = movement2action(tuple(np.array(next_position) - np.array(memory.local_position)), memory.local_direction)
-    
-    memory.local_position += np.array(action2movement(agent_action, memory.local_direction))
-    memory.last_move = agent_action
+    if not memory.apath or len(memory.apath) == 0:
+        action = feasible_explore(grid_info)
+        memory.last_move = action
+    else:
+        next_position = memory.apath.pop(0)
+        agent_action = movement2action(tuple(np.array(next_position) - np.array(memory.local_position)), memory.local_direction)
+        
+        memory.local_position += np.array(action2movement(agent_action, memory.local_direction))
+        memory.last_move = agent_action
+        
     return action_to_one_hot(ACTION_TO_IDX[agent_action])
 
 
@@ -622,6 +649,7 @@ def a_star_search(start, goal, grid=GLOBAL_MAP):
     '''This function is generated with GPT and slightly modified. It main contain bugs but I haven't found any.'''
     start = tuple(start)
     goal = tuple(goal)
+    grid[goal] = 0
     
     neighbors = [(0,1), (1,0), (0,-1), (-1,0)]  # Move right, down, left, up
     close_set = set()
