@@ -180,7 +180,7 @@ def run_game(
     # pprint(game_info)
     print("n_return: ", g.n_return)
     logs = json.dumps(game_info, ensure_ascii=False, cls=NpEncoder)
-    logger.info(logs)
+    # logger.info(logs)
 
 
 def get_valid_agents():

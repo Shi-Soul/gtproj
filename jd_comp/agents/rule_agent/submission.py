@@ -1,9 +1,8 @@
 import random
 import numpy as np
-from PIL import Image
 import heapq
 from scipy.stats import norm
-
+from time import perf_counter
 
 
 GLOBAL_MAP = np.array([
@@ -162,14 +161,21 @@ class Memory:
 
 
 memory = Memory()
-DEBUG = True
+DEBUG = False
+if DEBUG:
+    gt_time = 0
+    from PIL import Image
 
 
 def my_controller(observation, action_space, is_act_continuous=False):
     """
     observation: (['COLLECTIVE_REWARD', 'READY_TO_SHOOT', 'INVENTORY', 'RGB', 'STEP_TYPE', 'REWARD'])
     """
-    global memory
+    global memory, gt_time
+    
+    if DEBUG:
+        print(perf_counter()-gt_time)
+        gt_time = perf_counter()
     
     if DEBUG:
         print('INVENTORY', memory.inventory)
@@ -388,8 +394,8 @@ def localization_phase(grid_info):
     for idx, feasible in enumerate(feasible_empty):
         if feasible:
             feasible_list.append(id2action[idx])
-            if not feasible_empty[3-idx]: # opposite direction is also wall
-                for _ in range(2):
+            if not feasible_empty[(idx+2)%4]: # opposite direction is also wall
+                for _ in range(3):
                     feasible_list.append(id2action[idx]) # more willing to keep from the wall
     if memory.explore_step is not None and memory.explore_step in feasible_list:
         for _ in range(3):
@@ -452,7 +458,7 @@ def add_card_as_obstacle(grid_info, color):
     row, col = len(grid_info), len(grid_info[0])
     for i in range(row):
         for j in range(col):
-            if grid_info[i][j] in color:
+            if grid_info[i][j] in color or grid_info[i][j] == 'OTHER': # in case agents block each other
                 card_pos.append((i, j))
     for pos in card_pos:
         rpos = np.array(pos) - np.array((3, 2))
