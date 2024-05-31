@@ -2,7 +2,7 @@ import random
 import numpy as np
 import heapq
 from scipy.stats import norm
-from time import perf_counter
+
 
 
 GLOBAL_MAP = np.array([
@@ -172,7 +172,7 @@ class Memory:
 
 
 memory = Memory()
-DEBUG = 1
+DEBUG = 0
 if DEBUG:
     from PIL import Image
 
@@ -489,6 +489,7 @@ def locolization(matchs):
 def feasible_explore(grid_info, is_localized=True):
     '''Explore phase, tend to walk from walls for quicker localization.'''
     global memory
+    
     # while not is_localized, walk into empty space only
     feasible_empty = [grid_info[2][2]=='EMPTY', grid_info[3][1]=='EMPTY', grid_info[4][2]=='EMPTY', grid_info[3][3]=='EMPTY'] # up left down right
     id2action = ['FORWARD', 'STEP_LEFT', 'BACKWARD', 'STEP_RIGHT']
@@ -512,6 +513,7 @@ def feasible_explore(grid_info, is_localized=True):
 def localization_phase(grid_info):
     '''Localization phase, tend to walk from walls for quicker localization.'''
     global memory
+    
     matches = find_matches(GLOBAL_MAP, grid_info, None if len(memory.position_memo) == 0 else memory.position_memo[-1])
     memory.position_memo.append(matches)
     is_localized, local_position, direction = locolization(matches)
