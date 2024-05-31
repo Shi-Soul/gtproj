@@ -48,12 +48,15 @@ ACTION_TO_IDX = {action: i for i, action in enumerate(ACTIONS)}
 
 # functions for update global info
 def oppo_coor(coor, rw):
-    # coor:(0, 1) my coor prob; rw: reward
-    # return opponent coor prob
+    '''
+    coor: my coor prob; rw: reward
+    return opponent coor prob
+    '''
     return (rw+coor-1)/(4-coor)
 
 
 def fit_gaussian(data):
+    '''calculate weight gaussian params, weighted by the time'''
     wdata=[] # weighted data
     for t, d in enumerate(data):
         wdata.extend([d]*np.floor(100/(len(data)-t)).astype(int))
@@ -67,6 +70,7 @@ def sample_gaussian(mean, std_dev, num_samples):
 
 
 def get_policy(coor):
+    '''hardcode policy'''
     if coor < 1/7:
         target = (1, 6)
     elif coor < 1/6:
@@ -140,11 +144,13 @@ class Memory:
         self_coor = self.inventory[0] / sum(self.inventory)
         oppo_coor_prob = oppo_coor(self_coor, rw)
         self.oppo_info.append(oppo_coor_prob)
+        if DEBUG:
+            print('OPPO INFO', self.oppo_info)
         mean, dev = fit_gaussian(self.oppo_info)
-        estm_oppo = sample_gaussian(mean, dev/2, 1)
+        estm_oppo = sample_gaussian(mean, dev/2, 1) # we do not want much randomness
         best_coor = estm_oppo - dev * 2 
-        # this is because the dev of [0.1, 0.9] is 0.38 here. 
-        # For a random-like opponent, we want to always betray, that is: mean:0.5+0.38*2 -> 1
+        # this is because the dev of random or [0.1, 0.9] is around 0.33-0.38 here. 
+        # For a random-like opponent, we want to always betray, that is: mean:0.5+0.35*2 -> 1
         # For a fixed oppenent, the best is to betray. I have no good plan for that, but at least we betray to betrayers.
         # For a one-time cooperator, this policy tries to copy the opponent's behavior
         self.collect_target = get_policy(best_coor)
@@ -182,6 +188,7 @@ def my_controller(observation, action_space, is_act_continuous=False):
     memory.inventory = observation['INVENTORY']
     rgb = observation['RGB']
     rgb_grid = downsample_image(rgb, 8)
+    grid_info = convert_grid_to_info(rgb_grid)
     
     if DEBUG:
         print('REWARD', observation['REWARD'])
@@ -191,14 +198,13 @@ def my_controller(observation, action_space, is_act_continuous=False):
         # Image.fromarray(rgb_grid).save(f'./img_logs/{memory.global_img}_grid.png')
         memory.global_img += 1
     
-    if np.sum(rgb_grid)==0: # the rgb will be all black
+    if np.sum(rgb_grid)==0 or observation['REWARD']>0 or not check_location_correct(grid_info): # the rgb will be all black
         if DEBUG:
             print('NEW GAME! Waiting.')
         memory.reset()
         memory.policy_update(observation['REWARD'])
         return action_to_one_hot(ACTION_TO_IDX['NOOP'])
         
-    grid_info = convert_grid_to_info(rgb_grid)
     # grid info example: [['EMPTY', 'WALL', 'EMPTY', 'BLUE', 'BLUE'], ['EMPTY', 'WALL', 'EMPTY', 'RED', 'RED'], ['EMPTY', 'EMPTY', 'EMPTY', 'RED', 'RED'], ['EMPTY', 'EMPTY', 'SELF', 'EMPTY', 'EMPTY'], ['EMPTY', 'WALL', 'EMPTY', 'EMPTY', 'WALL']]
     
     try:
@@ -208,16 +214,18 @@ def my_controller(observation, action_space, is_act_continuous=False):
         
         # path planning phase, go to the nearest area according to betray policy
         else:
-            return policy_planner(grid_info, observation)
+            return path_planning_phase(grid_info, observation)
         
     except Exception as e:
+        # This usually happens when the agent is shot. We act but not move, thus get wrong localization
         if DEBUG:
             print('ERROR!', e)
-        return action_to_one_hot(ACTION_TO_IDX['NOOP']) # been shot. wait for the next game
+        return action_to_one_hot(ACTION_TO_IDX['NOOP'])
 
 
 ### Code for basic tools
 def action_to_one_hot(action):
+    '''Input should be action id'''
     one_hot = np.zeros(8).astype(int)
     one_hot[action] = 1
     return [one_hot.tolist()]
@@ -225,14 +233,8 @@ def action_to_one_hot(action):
 
 def downsample_image(image, block_size=8):
     """
-    Downsample a 40x40x3 image by averaging over 8x8 blocks.
-    
-    Args:
-        image: numpy array of shape (40, 40, 3)
-        block_size: size of the block to average over (e.g., 8 for 8x8 blocks)
-    
-    Returns:
-        downsampled_image: numpy array of shape (5, 5, 3)
+    Downsample image by taking the mean value of each block of block_size x block_size pixels
+    RGB is [40, 40, 3], return [5, 5, 3] int array
     """
     downsampled_shape = (image.shape[0] // block_size, image.shape[1] // block_size, image.shape[2])
     
@@ -248,6 +250,7 @@ def downsample_image(image, block_size=8):
 
 
 def convert_grid_to_info(grid):
+    '''Input is downsampled image, output is grid info: list[list[str]]'''
     info = []
     row, col, _ = grid.shape
     for i in range(row):
@@ -270,6 +273,7 @@ def convert_grid_to_info(grid):
 
 
 def scan_grid_info(grid_info):
+    '''Used to check if [ITEM] in localmap'''
     row, col = len(grid_info), len(grid_info[0])
     scan = []
     for i in range(row):
@@ -279,6 +283,7 @@ def scan_grid_info(grid_info):
 
 
 def can_hit(grid_info):
+    '''For simplification, we only consider the 4*3 area before agent'''
     for i in range(1, 5):
         for j in range(1, 4):
             if grid_info[i][j] == 'OTHER':
@@ -287,11 +292,12 @@ def can_hit(grid_info):
 
 
 def in_back(grid_info, target):
+    '''Only check the back 1 line of the agent, used to turn agent around'''
     return target in grid_info[-1]
 
 
 def action2movement(action, direction):
-    # input is text, output is (di, dj)
+    '''input is text, output is (di, dj)'''
     redirect = ['up', 'left', 'down', 'right']
     if direction == 'left':
         redirect = ['left', 'down', 'right', 'up']
@@ -304,7 +310,7 @@ def action2movement(action, direction):
     
     
 def movement2action(movement, direction):
-    # input is (di, dj), output is text
+    '''Input is (di, dj), output is text'''
     redirect = ['FORWARD', 'STEP_LEFT', 'BACKWARD', 'STEP_RIGHT']
     if direction == 'left':
         redirect = ['STEP_RIGHT', 'FORWARD', 'STEP_LEFT', 'BACKWARD']
@@ -317,12 +323,13 @@ def movement2action(movement, direction):
 
 
 def heuristic(a, b):
-    # Manhattan distance on a square grid
+    '''Manhattan distance on a square grid'''
     return abs(b[0] - a[0]) + abs(b[1] - a[1])
 
 
 ### Code for phase 1: locolization
 def info2mask(info):
+    '''Convert grid info to mask, 1 is wall, 0 is empty space'''
     mask = np.zeros((5, 5))
     for i in range(5):
         for j in range(5):
@@ -331,7 +338,34 @@ def info2mask(info):
     return mask
 
 
+def check_location_correct(grid_info):
+    '''
+    Check if the local map is correctly located in the global map.
+    The game will end if timestamp is over, but the agent do not know when a new scenario starts.
+    So if mislocated, we reset the memory.
+    '''
+    global memory    
+    if memory.local_position is None:
+        return True
+    
+    grid_info_mask = info2mask(grid_info)
+    ax, ay = memory.local_position
+    if memory.local_direction == 'up':
+        global_submap = GLOBAL_MAP[ax-3:ax+2, ay-2:ay+3]
+    elif memory.local_direction == 'left':
+        global_submap = GLOBAL_MAP[ax-2:ax+3, ay-3:ay+2]
+        grid_info_mask = np.rot90(grid_info_mask, k=1)
+    elif memory.local_direction == 'down':
+        global_submap = GLOBAL_MAP[ax-1:ax+4, ay-2:ay+3]
+        grid_info_mask = np.rot90(grid_info_mask, k=2)
+    elif memory.local_direction == 'right':
+        global_submap = GLOBAL_MAP[ax-2:ax+3, ay-1:ay+4]
+        grid_info_mask = np.rot90(grid_info_mask, k=3)
+    return np.array_equal(global_submap, grid_info_mask)
+
+
 def find_matches(global_map, local_map, last_matches=None):
+    '''Hentai code for localization. Very naive.'''
     local_map = info2mask(local_map)
     adject = [(3, 2), (2, 3), (1, 2), (2, 1)]
     matches = []
@@ -363,6 +397,7 @@ def find_matches(global_map, local_map, last_matches=None):
 
 
 def locolization(matchs):
+    '''Return True if localized, False if not, and the position and direction'''
     directions = ['up', 'left', 'down', 'right']
     total = 0
     direction = ''
@@ -376,10 +411,11 @@ def locolization(matchs):
             direction = directions[i]
     if DEBUG:
         print('Localized at', position, 'at frame', len(memory.position_memo)-1)
-    return True, np.array(position), direction
+    return True, np.array(position) if position is not None else None, direction
 
 
 def localization_phase(grid_info):
+    '''Localization phase, tend to walk from walls for quicker localization.'''
     global memory
     matches = find_matches(GLOBAL_MAP, grid_info, None if len(memory.position_memo) == 0 else memory.position_memo[-1])
     memory.position_memo.append(matches)
@@ -410,6 +446,7 @@ def localization_phase(grid_info):
         
 ### Code for phase 2: path planning
 def nearest_center(card_centers):
+    '''Find nearest center of cards.'''
     min_dist = 1000
     nearest_center = None
     for center in card_centers:
@@ -421,6 +458,7 @@ def nearest_center(card_centers):
 
 
 def nearest_card(grid_info, color):
+    '''Find nearest cards in sight.'''
     card_pos = []
     arow, acol = memory.local_position
     row, col = len(grid_info), len(grid_info[0])
@@ -450,6 +488,7 @@ def nearest_card(grid_info, color):
     
 
 def add_card_as_obstacle(grid_info, color):
+    '''Add cards as obstacles in the memory map. This map should be cached in memory, or would cause agent stuck!'''
     if type(color) == str:
         color = [color]
     card_pos = []
@@ -473,7 +512,8 @@ def add_card_as_obstacle(grid_info, color):
     return color_map
     
 
-def policy_planner(grid_info, observation):
+def path_planning_phase(grid_info, observation):
+    '''Main logic for path planning.'''
     global memory
     
     target_priority = memory.update_collect()
@@ -521,6 +561,7 @@ def policy_planner(grid_info, observation):
 
 
 def a_star_search(start, goal, grid=GLOBAL_MAP):
+    '''This function is generated with GPT and slightly modified. It main contain bugs but I haven't found any.'''
     start = tuple(start)
     goal = tuple(goal)
     
