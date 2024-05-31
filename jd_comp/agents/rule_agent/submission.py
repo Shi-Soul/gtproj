@@ -148,9 +148,9 @@ class Memory:
             print('OPPO INFO', self.oppo_info)
         mean, dev = fit_gaussian(self.oppo_info)
         estm_oppo = sample_gaussian(mean, dev/2, 1) # we do not want much randomness
-        best_coor = estm_oppo - dev * 2 
+        best_coor = estm_oppo - dev * 2
         # this is because the dev of random or [0.1, 0.9] is around 0.33-0.38 here. 
-        # For a random-like opponent, we want to always betray, that is: mean:0.5+0.35*2 -> 1
+        # For a random-like opponent, we want to always betray, that is: mean:0.5-0.35*2 -> 0
         # For a fixed oppenent, the best is to betray. I have no good plan for that, but at least we betray to betrayers.
         # For a one-time cooperator, this policy tries to copy the opponent's behavior
         self.collect_target = get_policy(best_coor)
@@ -198,12 +198,16 @@ def my_controller(observation, action_space, is_act_continuous=False):
         # Image.fromarray(rgb_grid).save(f'./img_logs/{memory.global_img}_grid.png')
         memory.global_img += 1
     
-    if np.sum(rgb_grid)==0 or observation['REWARD']>0 or not check_location_correct(grid_info): # the rgb will be all black
+    if np.sum(rgb_grid)==0 or observation['REWARD']>0: # the rgb will be all black
         if DEBUG:
             print('NEW GAME! Waiting.')
         memory.reset()
         memory.policy_update(observation['REWARD'])
         return action_to_one_hot(ACTION_TO_IDX['NOOP'])
+    if not check_location_correct(grid_info): # a new scenario starts
+        if DEBUG:
+            print('NEW SCENARIO! Resetting.')
+        memory = Memory()
         
     # grid info example: [['EMPTY', 'WALL', 'EMPTY', 'BLUE', 'BLUE'], ['EMPTY', 'WALL', 'EMPTY', 'RED', 'RED'], ['EMPTY', 'EMPTY', 'EMPTY', 'RED', 'RED'], ['EMPTY', 'EMPTY', 'SELF', 'EMPTY', 'EMPTY'], ['EMPTY', 'WALL', 'EMPTY', 'EMPTY', 'WALL']]
     
