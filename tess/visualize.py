@@ -9,7 +9,7 @@ import numpy as np
 import random
 
 args = argparse.ArgumentParser(description="Visualize Trained Models")
-args.add_argument("--agent-file",type=str,default="./Tess/saved_models/prisoners_dilemma_in_the_matrix__repeated/prisoners_dilemma_in_the_matrix__repeated-v11-2717-4801-202405.pt")
+args.add_argument("--agent-file",type=str,default="./Tess/saved_models/prisoners_dilemma_in_the_matrix__repeated/pd_betray_29024311.pt")
 args.add_argument("--substrate",type=str,default="prisoners_dilemma_in_the_matrix__repeated")
 args.add_argument("--env",type=str,default="TessEnv-v4")
 args.add_argument("--model",type=str,default="impala_v4_new")
@@ -118,6 +118,7 @@ video.release()
 
 # print(np.mean(entropies))
 # print(np.std(entropies))
+print(len(images))
 print(env.real_rewards)
 print(np.mean(env.real_rewards[0]))
 print(np.sum(env.real_rewards))
