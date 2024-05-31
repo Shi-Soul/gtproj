@@ -72,32 +72,11 @@ def sample_gaussian(mean, std_dev, num_samples):
 
 def get_policy(coor):
     '''hardcode policy'''
-    if coor < 1/7:
-        target = (1, 6)
-    elif coor < 1/6:
-        target = (1, 5)
-    elif coor < 1/5:
-        target = (1, 4)
-    elif coor < 1/4:
-        target = (1, 3)
-    elif coor < 1/3:
-        target = (1, 2)
-    elif coor < 2/5:
-        target = (2, 3)
-    elif coor < 1/2:
-        target = (2, 2)
-    elif coor < 3/5:
-        target = (3, 2)
-    elif coor < 2/3:
-        target = (2, 1)
-    elif coor < 3/4:
-        target = (3, 1)
-    elif coor < 4/5:
-        target = (4, 1)
-    elif coor < 5/6:
-        target = (5, 1)
-    else: # coor < 6/7
-        target = (6, 1)
+    global SC 
+    if SC < 3:
+        target = (1, 8)
+    else:
+        target = (8, 1)
     return np.array(target)
 
 
@@ -171,6 +150,7 @@ class Memory:
         self.lasered = False
 
 
+SC = 0
 memory = Memory()
 DEBUG = 0
 if DEBUG:
@@ -181,7 +161,7 @@ def my_controller(observation, action_space, is_act_continuous=False):
     """
     observation: (['COLLECTIVE_REWARD', 'READY_TO_SHOOT', 'INVENTORY', 'RGB', 'STEP_TYPE', 'REWARD'])
     """
-    global memory
+    global memory, SC
     
     memory.inventory = observation['INVENTORY']
     if sum(memory.inventory) > 2:
@@ -226,6 +206,7 @@ def my_controller(observation, action_space, is_act_continuous=False):
         
     if memory.time_cnt > 500:
         memory = Memory()
+        SC += 1
         
     # grid info example: [['EMPTY', 'WALL', 'EMPTY', 'BLUE', 'BLUE'], ['EMPTY', 'WALL', 'EMPTY', 'RED', 'RED'], ['EMPTY', 'EMPTY', 'EMPTY', 'RED', 'RED'], ['EMPTY', 'EMPTY', 'SELF', 'EMPTY', 'EMPTY'], ['EMPTY', 'WALL', 'EMPTY', 'EMPTY', 'WALL']]
     
