@@ -144,7 +144,7 @@ def run_game(
     while not g.is_terminal():
         step = "step%d" % g.step_cnt
         if g.step_cnt % 100 == 0:
-            print(step)
+            print(step, g.n_return)
 
         if render_mode and hasattr(g, "env_core"):
             if hasattr(g.env_core, "render"):
@@ -177,11 +177,11 @@ def run_game(
     ed = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
     game_info["end_time"] = ed
     
-    print("Game Info")
-    print(game_info)
+    # print("Game Info")
+    # print(game_info)
     print("n_return: ", g.n_return)
-    logs = json.dumps(game_info, ensure_ascii=False, cls=NpEncoder)
-    logger.info(logs)
+    # logs = json.dumps(game_info, ensure_ascii=False, cls=NpEncoder)
+    # logger.info(logs)
 
 
 def get_valid_agents():
