@@ -1,3 +1,10 @@
+# --------------------------------------------------------------------------------
+# Author: Loping151(Kailing Wang)
+# GitHub: https://github.com/Loping151
+# Description: The script is implemented from scratch by Loping151.
+# --------------------------------------------------------------------------------
+
+
 import random
 import numpy as np
 import heapq

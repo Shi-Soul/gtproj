@@ -1,3 +1,10 @@
+# --------------------------------------------------------------------------------
+# Author: Loping151(Kailing Wang)
+# GitHub: https://github.com/Loping151
+# Description: The script is implemented from scratch by Loping151.
+# Warning: This is a cheat agent that knows the sequence of the scenario.
+# --------------------------------------------------------------------------------
+
 import random
 import numpy as np
 import heapq
@@ -74,7 +81,7 @@ def get_policy(coor):
     '''hardcode policy'''
     global SC 
     if SC < 3:
-        target = (1, 8)
+        target = (1, 5)
     else:
         target = (8, 1)
     return np.array(target)
