@@ -79,7 +79,11 @@ def sample_gaussian(mean, std_dev, num_samples):
 
 def get_policy(coor):
     '''hardcode policy'''
-    if coor < 1/7:
+    if coor < 1/9:
+        target = (1, 8)
+    elif coor < 1/8:
+        target = (1, 7)
+    elif coor < 1/7:
         target = (1, 6)
     elif coor < 1/6:
         target = (1, 5)
@@ -103,8 +107,12 @@ def get_policy(coor):
         target = (4, 1)
     elif coor < 5/6:
         target = (5, 1)
-    else: # coor < 6/7
+    elif coor < 6/7:
         target = (6, 1)
+    elif coor < 7/8:
+        target = (7, 1)
+    elif coor < 8/9:
+        target = (8, 1)
     return np.array(target)
 
 
