@@ -81,7 +81,7 @@ def get_policy(coor):
     '''hardcode policy'''
     global SC 
     if SC < 3:
-        target = (1, 5)
+        target = (1, 8)
     else:
         target = (8, 1)
     return np.array(target)
