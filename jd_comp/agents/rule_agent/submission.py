@@ -111,7 +111,7 @@ def get_policy(coor):
         target = (6, 1)
     elif coor < 7/8:
         target = (7, 1)
-    elif coor < 8/9:
+    else:
         target = (8, 1)
     return np.array(target)
 
