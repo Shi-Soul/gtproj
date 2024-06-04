@@ -109,8 +109,13 @@ python visualize.py --substrate prisoners_dilemma_in_the_matrix__repeated
 python visualize.py --substrate clean_up --agent-file ./Tess/saved_models/clean_up/cu_base.pt
 
 # Evaluate
-CUDA_VISIBLE_DEVICES=-1 python baselines/evaluation/eval_tess.py --num_episodes 5 --policies_dir /home/wjxie/wjxie/env/gtproj/tess/Tess/saved_models/prisoners_dilemma_in_the_matrix__repeated/pd_betray_29024311.pt
-CUDA_VISIBLE_DEVICES=-1 python baselines/evaluation/eval_tess.py --num_episodes 2 --policies_dir /home/wjxie/wjxie/env/gtproj/tess/Tess/saved_models/clean_up/cu_base.pt
+CUDA_VISIBLE_DEVICES=0 python baselines/evaluation/eval_tess.py --num_episodes 5 --policies_dir /home/wjxie/wjxie/env/gtproj/tess/Tess/saved_models/prisoners_dilemma_in_the_matrix__repeated/pd_betray_29024311.pt
+
+CUDA_VISIBLE_DEVICES=0 python baselines/evaluation/eval_tess.py --num_episodes 2 --eval_on_scenario True --scenario clean_up_7 --policies_dir /home/wjxie/wjxie/env/gtproj/tess/Tess/saved_models/clean_up/cu_base.pt
+CUDA_VISIBLE_DEVICES=0 python baselines/evaluation/eval_tess.py --num_episodes 2 --eval_on_scenario True --scenario clean_up --policies_dir /home/wjxie/wjxie/env/gtproj/tess/Tess/saved_models/clean_up/cu_base.pt >> cu_result/cu_base_cu.log
+
+
+
 ```
 
 
