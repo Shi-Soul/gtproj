@@ -33,6 +33,7 @@ def get_agent(agent_file=AGENT_FILE,substrate="pd_matrix"):
     agent = model(OBS_S[1:], NUM_ACT, task_count=2, **kwargs)
     agent = agent.to(DEVICE)
     agent.load_state_dict(torch.load(agent_file, map_location=torch.device(DEVICE)))
+    agent.eval()
     return agent
 
 
@@ -59,7 +60,8 @@ class EvalPolicy():
         
         self.state = (h_n, c_n)
         return self.state
-
+    
+    @torch.no_grad()
     def step(self, timestep, prev_state: Any=None):
         # timestep: observation, reward, done, step_type
         #  timestep.observation.keys()
@@ -91,7 +93,7 @@ class EvalPolicy():
         obs = torch.from_numpy(obs).to(DEVICE).permute((0,3,1,2))
         shoot = torch.tensor(shoot,device=DEVICE).view(-1)
         act, log_prob, value, self.state = self.agent.sample_act_and_value(obs, shoot=shoot, history=self.state, timestep = None, inv=inv, reduce=True)
-        return act, None
+        return int(act.cpu()), None
     
     def close(self):
         pass
