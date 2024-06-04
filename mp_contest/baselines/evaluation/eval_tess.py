@@ -102,12 +102,6 @@ def main():
         help="Name of the scenario. This cannot be None when eval_on_scenario is set to True.",
     )
 
-    # parser.add_argument(
-    #     "--config_dir",
-    #     type=str,
-    #     help="Directory where your experiment config (params.json) is located",
-    # )
-
     parser.add_argument(
         "--policies_dir",
         type=str,
@@ -127,12 +121,6 @@ def main():
         help="Directory where you want to store evaluation videos",
     )
     parser.add_argument(
-        "--param_sharing",
-        action="store_true",
-        help="Whether to share parameters across agents.",
-        
-    )
-    parser.add_argument(
         "--expname",
         type=str,
         help="Directory where you want to store evaluation videos",
@@ -142,26 +130,11 @@ def main():
 
     print("Evaluating with the following arguments: ", args)
 
-    # if args.eval_on_scenario:
-    #     if args.scenario is None:
-    #         raise Exception(
-    #             "Either set evaluate_on_scenario to False or provide a scenario name from supported scenarios"
-    #         )
-    #     if args.scenario not in SUPPORTED_SCENARIOS:
-    #         raise Exception(
-    #             "Provide a valid scenario name from supported scenarios. Supported scenarios are: ",
-    #             SUPPORTED_SCENARIOS,
-    #         )
-    # else:
-    #     print(
-    #         "evaluate_on_scenario=False. Evaluating on substrate found in the config file provided."
-    #     )
-
     results, scenario = run_evaluation(args)
     print(f"Results for {scenario}: ")
     with pd.option_context("display.max_rows", None, "display.max_columns", None):
         print(results)
-        results.to_csv(f"results_{args.expname}_{args.scenario if args.eval_on_scenario else ''}.csv")
+        # results.to_csv(f"results_{args.expname}_{args.scenario if args.eval_on_scenario else ''}.csv")
 
 
 if __name__ == "__main__":
