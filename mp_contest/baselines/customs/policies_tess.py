@@ -13,15 +13,23 @@ base_dir = Path(__file__).resolve().parent
 print(base_dir)
 sys.path.append(str(base_dir))
 
-AGENT_FILE = str(base_dir)+"/pd_best.pt"
-OBS_S = (2, 20, 20, 3)
-ACT_S = (2,)
-NUM_ACT = 8
-DEVICE = "cpu"
+AGENT_FILE = str(base_dir)+"/pd_best.pt" # Default path to the agent file, will be overwritten
 
-def get_agent(agent_file=AGENT_FILE):
-    kwargs = {"inv":True}
+DEVICE = "cuda" #"cpu"
+
+def get_agent(agent_file=AGENT_FILE,substrate="pd_matrix"):
     from impala_v4_new import Model as model
+    if substrate == "pd_matrix":
+        kwargs = {"inv":True}
+        OBS_S = (2, 20, 20, 3)
+        ACT_S = (2,)
+        NUM_ACT = 8
+    else:
+        assert substrate == "clean_up"
+        kwargs = {"inv":False}
+        OBS_S = (7, 44, 44, 3)
+        ACT_S=(7,)
+        NUM_ACT = 9
     agent = model(OBS_S[1:], NUM_ACT, task_count=2, **kwargs)
     agent = agent.to(DEVICE)
     agent.load_state_dict(torch.load(agent_file, map_location=torch.device(DEVICE)))
@@ -36,11 +44,13 @@ class EvalPolicy():
     def __init__(
         self,
         agent_file=AGENT_FILE,
+        substrate = "pd_matrix",
         *args,
         **kwargs,
     ) -> None:
         # agent_file=AGENT_FILE
-        self.agent = get_agent(agent_file)
+        self.agent = get_agent(agent_file,substrate)
+        self.substrate = substrate
 
     def initial_state(self):
         """See base class."""
@@ -51,7 +61,12 @@ class EvalPolicy():
         return self.state
 
     def step(self, timestep, prev_state: Any=None):
-        # Need: obs(torch.Size([2, 3, 20, 20])), shoot, inv, 
+        # timestep: observation, reward, done, step_type
+        #  timestep.observation.keys()
+        # dict_keys(['COLLECTIVE_REWARD', 'READY_TO_SHOOT', 'RGB'])
+        
+        
+        # Need: obs(torch.Size([2, 3, 20, 20])), shoot, (inv, )
         observation = timestep.observation
         obs_list = [cv2.resize(i["RGB"], (i["RGB"].shape[0] // 2,i["RGB"].shape[1] // 2), cv2.INTER_AREA) for i in [observation]]
         obs = np.array(obs_list)
@@ -61,16 +76,22 @@ class EvalPolicy():
         
         shoot = [int(i["READY_TO_SHOOT"]) for i in [observation]]
         
-        ts_invs = [i["INVENTORY"] for i in [observation]]
-        invs = []
-        for i in ts_invs:
-            summa = sum(i)
-            invs.append([i[0]/summa,i[1]/summa])
+        if self.substrate == "pd_matrix":
+            # pd matrix
+            ts_invs = [i["INVENTORY"] for i in [observation]]
+            invs = []
+            for i in ts_invs:
+                summa = sum(i)
+                invs.append([i[0]/summa,i[1]/summa])
+            inv = torch.tensor(invs, dtype=torch.float32,device=DEVICE)
+        else:
+            # clean up
+            inv = False
         
         obs = torch.from_numpy(obs).to(DEVICE).permute((0,3,1,2))
-        inv = torch.tensor(invs, dtype=torch.float32,device=DEVICE)
         shoot = torch.tensor(shoot,device=DEVICE).view(-1)
         act, log_prob, value, self.state = self.agent.sample_act_and_value(obs, shoot=shoot, history=self.state, timestep = None, inv=inv, reduce=True)
         return act, None
+    
     def close(self):
         pass

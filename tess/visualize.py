@@ -54,7 +54,7 @@ if args.bot:
 else:
     h_n = torch.zeros((obs_s[0],256)).to(args.device)   
     c_n = torch.zeros((obs_s[0],256)).to(args.device)
-    # For PD Matirx: 
+    # For PD Matirx & Clean Up: 
         # (Pdb) h_n.shape
         # torch.Size([2, 256])
         # (Pdb) c_n.shape
@@ -78,19 +78,21 @@ while not done:
         images.append(img)
 
         obs = torch.from_numpy(obs).to(args.device).permute((0,3,1,2))
-        # obs.shape:  torch.Size([2, 3, 20, 20])
+        # PD Matrix:
+            # obs.shape:  torch.Size([2, 3, 20, 20])
+        # Clean Up:
+            # ([7, 3, 44, 44])
         
             # inv = torch.ones((act_s[0],2), device="cuda", dtype=torch.float32) / 2
             # inv.shape: torch.Size([2, 2])
-        if "3" in args.env or "Terr" in args.env:
-            time_d = torch.tensor(env.counter, device="cuda").view(1,1).expand(env.num_players,1) / 1000
-        else:
-            time_d = None
+        time_d = None
             
         shoot = torch.tensor(env.shoot,device="cuda").view(-1)
-        # shape: torch.Size([2])
+        # PDM: shape: torch.Size([2])
+        # Clean Up  : torch.Size([7])
         
         #shoot = torch.zeros(env.num_players,device="cuda",dtype=torch.float32)
+        # import pdb;pdb.set_trace() # DEBUG:
         if args.bot:
             raise NotImplementedError
             bot_act, (bot_h, bot_c), _ = bots.get_action(obs[:bot_count,:,:,:], shoot=shoot[:bot_count], history=(bot_h,bot_c),\

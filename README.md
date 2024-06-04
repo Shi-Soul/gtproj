@@ -73,6 +73,14 @@ do
 done
 
 echo $RUN_DIR $CKP_NAME
+
+# SUPPORTED_SCENARIOS = [
+#     'clean_up_7',
+#     'prisoners_dilemma_in_the_matrix__repeated_0',
+#     'prisoners_dilemma_in_the_matrix__repeated_1',
+#     'prisoners_dilemma_in_the_matrix__repeated_2',
+#     'prisoners_dilemma_in_the_matrix__repeated_3',
+# ]
 ```
 
 Jidi
@@ -98,9 +106,11 @@ CUDA_VISIBLE_DEVICES=1 python train_multitask.py --substrate prisoners_dilemma_i
 
 # Visualize
 python visualize.py --substrate prisoners_dilemma_in_the_matrix__repeated
+python visualize.py --substrate clean_up --agent-file ./Tess/saved_models/clean_up/cu_base.pt
 
-# Evaluate (for now only pd_matrix )
-CUDA_VISIBLE_DEVICES=-1 python baselines/evaluation/eval_tess.py --num_episodes 5 --config_dir RUN_DIR --policies_dir /home/wjxie/wjxie/env/gtproj/tess/Tess/saved_models/prisoners_dilemma_in_the_matrix__repeated/prisoners_dilemma_in_the_matrix__repeated-v11-2604-0528-202405.pt
+# Evaluate
+CUDA_VISIBLE_DEVICES=-1 python baselines/evaluation/eval_tess.py --num_episodes 5 --policies_dir /home/wjxie/wjxie/env/gtproj/tess/Tess/saved_models/prisoners_dilemma_in_the_matrix__repeated/pd_betray_29024311.pt
+CUDA_VISIBLE_DEVICES=-1 python baselines/evaluation/eval_tess.py --num_episodes 2 --policies_dir /home/wjxie/wjxie/env/gtproj/tess/Tess/saved_models/clean_up/cu_base.pt
 ```
 
 
