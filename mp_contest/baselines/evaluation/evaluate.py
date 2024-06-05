@@ -72,6 +72,8 @@ def run_evaluation(args):
     for i in range(len(policy_ids)):
         names_by_role[roles[i]].append(policy_ids[i])
 
+    print('names_by_role: ', names_by_role)
+    # print('population:', population)
     # Build population and evaluate
     with build_focal_population(policies_path, policy_ids, scaled) as population:
         results = evaluation.evaluate_population(

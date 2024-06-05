@@ -30,7 +30,8 @@ class EvalPolicy(policy.Policy):
   def step(self, timestep: dm_env.TimeStep,
            prev_state: policy.State) -> Tuple[int, policy.State]:
     """See base class."""
-
+    # import pdb; pdb.set_trace() # DEBUG:!
+    
     observations = {
         key: value
         for key, value in timestep.observation.items()

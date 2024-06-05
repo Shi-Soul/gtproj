@@ -34,9 +34,15 @@ assets/
 results/
 
 *.avi
+*.avi
+*.webm
 */wandb
 */Tess/saved_models
 
 img_logs
 jd_comp/agents/rule_agent/wkl_playground.ipynb
 .vscode
+
+mp_contest/cu_result1
+mp_contest/cu_result
+*results*
