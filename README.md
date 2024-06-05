@@ -1,6 +1,15 @@
 # Game Theory Project | Melting Pot Contest @ AI3617-2024-Spring
 
 ## Overview
+
+This repo is our project for the Game Theory course. We focus on solving two substrates, Prisoners Dilemma in the Matrix Repeate (or PD Matrix for short) and Clean Up, from Melting Pot Contest 2023. The goal is to build an agent that can play well in each substrate.
+
+We build both Rule-based agent and RL agent for it. Our rule-based agent is only implemented in PD Matrix, composed of Policy Sampler and Global Navigation (See `jd_comp/agents/rule_agent`). Our RL agent is trained using the TESS framework, with our modified environment and reward function, called RIN ( Reward shaping Is all you Need ). (See `tess/`)
+
+Our PD Matrix agent is evaluated in Jidi.ai Platform, and our Clean Up agent is evaluated in the Melting Pot. 
+
+
+Code Structure:
 - jd_comp: an example code for submitting agent to jidi.ai competition
 - mp_contest: code for trainning agent
 - tess: tess framework, with our modification
