@@ -1,5 +1,7 @@
- 
+# Game Theory Project | Melting Pot Contest @ AI3617-2024-Spring
+This submission contains our agent for the project, including one rule-based agent for PD Matrix, and two RL agent for PD Matrix and Clean Up respectively.
 
+The complete code for our project is available at [our public github repo](https://github.com/Shi-Soul/gtproj).
 
 ## PD Matrix
 
