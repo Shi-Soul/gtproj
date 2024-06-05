@@ -3,17 +3,10 @@
 ## Overview
 - jd_comp: an example code for submitting agent to jidi.ai competition
 - mp_contest: code for trainning agent
-
-
-logs
-- add params sharing
-    - Weiji Xie: I guess it can work in clean_up, not in pd_matrix.
-- tune configs ("train_batch_size","sgd_minibatch_size",'num_sgd_iter')
-- change Exploration method (MyEpsExp)
-    - In build-in methods, StochasticSampling (used by default) is lack of exploration; But EpsGreedy use deterministic policy outside epsilon, which is also bad.
-    - MyEpsExp: inherit from EpsilonGreedy, but use stochastic sampling outside epsilon.
+- tess: tess framework, with our modification
 
 ## Run
+Setup
 ```bash
 cd mp_contest
 conda create -n gtp python=3.10 -y
@@ -26,11 +19,11 @@ pip install gym==0.22.0
 
 # for tess
 pip install stable-baselines3 opencv-python shimmy 
-pip install "gymnasium<0.30,>=0.28.1" # here is a Library Version Conflict, We are running on the tip of the knife
+pip install "gymnasium<0.30,>=0.28.1" # Here is a Library Version Conflict, We are running on the tip of the knife
 pip install tqdm
 ```
 
-Baseline Training
+Ray Baseline Training
 ```bash 
 wandb login # I have modified the code slightly, for the wandb to work, you need to login first
 

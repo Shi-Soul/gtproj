@@ -58,7 +58,7 @@ def run_evaluation(args):
     else:
         video_dir = None
 
-    policies_path = args.policies_dir
+    policies_path = args.policies_path
     
     policy_ids = ["shared_agent" for i in range(len(roles))]
     names_by_role = defaultdict(list)
@@ -103,7 +103,7 @@ def main():
     )
 
     parser.add_argument(
-        "--policies_dir",
+        "--policies_path",
         type=str,
         help="Directory where your trained polcies are located",
     )
